@@ -11,7 +11,6 @@ namespace SamplePlugin
     {
         private Configuration configuration;
         private Plugin plugin;
-        private Condition condition;
 
         private ImGuiScene.TextureWrap goatImage;
 
@@ -36,12 +35,11 @@ namespace SamplePlugin
         }
 
         // passing in the image here just for simplicity
-        public PluginUI(Configuration configuration, ImGuiScene.TextureWrap goatImage, Plugin plugin, Condition condition)
+        public PluginUI(Configuration configuration, Plugin plugin)
         {
             this.configuration = configuration;
-            this.goatImage = goatImage;
             this.plugin = plugin;
-            this.condition = condition;
+  
 
         }
 
@@ -59,7 +57,7 @@ namespace SamplePlugin
             // There are other ways to do this, but it is generally best to keep the number of
             // draw delegates as low as possible.
 
-            DrawMainWindow();
+         //   DrawMainWindow();
             DrawSettingsWindow();
         }
 
@@ -70,27 +68,27 @@ namespace SamplePlugin
                 return;
             }
 
-            ImGui.SetNextWindowSize(new Vector2(375, 330), ImGuiCond.FirstUseEver);
-            ImGui.SetNextWindowSizeConstraints(new Vector2(375, 330), new Vector2(float.MaxValue, float.MaxValue));
-            if (ImGui.Begin("My Amazing Window", ref this.visible, ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse))
-            {
+            //ImGui.SetNextWindowSize(new Vector2(375, 330), ImGuiCond.FirstUseEver);
+            //ImGui.SetNextWindowSizeConstraints(new Vector2(375, 330), new Vector2(float.MaxValue, float.MaxValue));
+            //if (ImGui.Begin("My Amazing Window", ref this.visible, ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse))
+            //{
 
-                if (ImGui.Button("Show Settings"))
-                {
-                    SettingsVisible = true;
-                }
+            //    if (ImGui.Button("Show Settings"))
+            //    {
+            //        SettingsVisible = true;
+            //    }
 
-                ImGui.Text("clientstate");
+            //    ImGui.Text("clientstate");
 
 
-                ImGui.Spacing();
+            //    ImGui.Spacing();
 
-                ImGui.Text("Have a goat:");
-                ImGui.Indent(55);
-                ImGui.Image(this.goatImage.ImGuiHandle, new Vector2(this.goatImage.Width, this.goatImage.Height));
-                ImGui.Unindent(55);
-            }
-            ImGui.End();
+            //    ImGui.Text("Have a goat:");
+            //    ImGui.Indent(55);
+            //    ImGui.Image(this.goatImage.ImGuiHandle, new Vector2(this.goatImage.Width, this.goatImage.Height));
+            //    ImGui.Unindent(55);
+            //}
+            //ImGui.End();
         }
 
         public void DrawSettingsWindow()

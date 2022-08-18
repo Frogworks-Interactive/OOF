@@ -2,16 +2,17 @@
   "Author": "Frogworks Interactive",
   "Name": "OOF!",
   "Punchline": "i love roblox!!!",
-  "Description": "Play the OOF! sound on fall and/or death",
+  "Description": "Play the OOF! sound on fall and/or death. The Only Plugin You Need!",
   "InternalName": "OofPlugin",
   "ApplicableVersion": "any",
   "Tags": [
-    "sample",
+    "OOF",
     "plugin",
-    "goats"
+    "play",
+    "sound"
   ],
   "DalamudApiLevel": 6,
-  "RepoUrl": "https://github.com/Frogworks-Interactive/EasySort",
+  "RepoUrl": "https://github.com/Frogworks-Interactive/OOF",
   "AssemblyVersion": "1.0.0"
 
 }

@@ -20,7 +20,7 @@ namespace SamplePlugin
 {
     public sealed class Plugin : IDalamudPlugin
     {
-        public string Name => "Sample Plugin";
+        public string Name => "OOF";
 
         private const string oofCommand = "/oof";
         private const string oofSettings = "/oofsettings";
@@ -63,9 +63,7 @@ namespace SamplePlugin
             this.Configuration.Initialize(this.PluginInterface);
 
             // you might normally want to embed resources and load them from the manifest stream
-            var imagePath = Path.Combine(PluginInterface.AssemblyLocation.Directory?.FullName!, "goat.png");
-            var goatImage = this.PluginInterface.UiBuilder.LoadImage(imagePath);
-            this.PluginUi = new PluginUI(this.Configuration, goatImage,this, Condition );
+            this.PluginUi = new PluginUI(this.Configuration,this );
             var soundfile = File.ReadAllBytes(Path.Combine(PluginInterface.AssemblyLocation.Directory?.FullName!, "oof.mp3"));
             this.soundFile = soundfile;
 
@@ -163,8 +161,6 @@ namespace SamplePlugin
         private void DrawUI()
         {
             this.PluginUi.Draw();
-
-
         }
 
         private void DrawConfigUI()
