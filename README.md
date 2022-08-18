@@ -1,4 +1,4 @@
-# Easy Sort
+# OOF!
 
 Dalamud plugin that plays the oof sound when you take 
 - fall damage
