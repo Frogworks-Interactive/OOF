@@ -1,0 +1,17 @@
+{
+  "Author": "Frogworks Interactive",
+  "Name": "OOF!",
+  "Punchline": "i love roblox!!!",
+  "Description": "Play the OOF! sound on fall and/or death",
+  "InternalName": "OofPlugin",
+  "ApplicableVersion": "any",
+  "Tags": [
+    "sample",
+    "plugin",
+    "goats"
+  ],
+  "DalamudApiLevel": 6,
+  "RepoUrl": "https://github.com/Frogworks-Interactive/EasySort",
+  "AssemblyVersion": "1.0.0"
+
+}

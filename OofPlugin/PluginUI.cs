@@ -1,6 +1,7 @@
 ﻿using ImGuiNET;
 using System;
 using System.Numerics;
+using Dalamud.Game.ClientState.Conditions;
 
 namespace SamplePlugin
 {
@@ -9,8 +10,15 @@ namespace SamplePlugin
     class PluginUI : IDisposable
     {
         private Configuration configuration;
+        private Plugin plugin;
+        private Condition condition;
 
         private ImGuiScene.TextureWrap goatImage;
+
+        private float prevPos { get; set; } = 0;
+        private float prevVel { get; set; } = 0;
+        private float distFallen { get; set; } = 0;
+        private float distJump { get; set; } = 0;
 
         // this extra bool exists for ImGui, since you can't ref a property
         private bool visible = false;
@@ -28,10 +36,13 @@ namespace SamplePlugin
         }
 
         // passing in the image here just for simplicity
-        public PluginUI(Configuration configuration, ImGuiScene.TextureWrap goatImage)
+        public PluginUI(Configuration configuration, ImGuiScene.TextureWrap goatImage, Plugin plugin, Condition condition)
         {
             this.configuration = configuration;
             this.goatImage = goatImage;
+            this.plugin = plugin;
+            this.condition = condition;
+
         }
 
         public void Dispose()
@@ -63,12 +74,14 @@ namespace SamplePlugin
             ImGui.SetNextWindowSizeConstraints(new Vector2(375, 330), new Vector2(float.MaxValue, float.MaxValue));
             if (ImGui.Begin("My Amazing Window", ref this.visible, ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse))
             {
-                ImGui.Text($"The random config bool is {this.configuration.SomePropertyToBeSavedAndWithADefault}");
 
                 if (ImGui.Button("Show Settings"))
                 {
                     SettingsVisible = true;
                 }
+
+                ImGui.Text("clientstate");
+
 
                 ImGui.Spacing();
 
@@ -87,15 +100,25 @@ namespace SamplePlugin
                 return;
             }
 
-            ImGui.SetNextWindowSize(new Vector2(232, 75), ImGuiCond.Always);
-            if (ImGui.Begin("A Wonderful Configuration Window", ref this.settingsVisible,
+            ImGui.SetNextWindowSize(new Vector2(232, 200), ImGuiCond.Always);
+            if (ImGui.Begin("oof settings", ref this.settingsVisible,
                 ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse))
             {
-                // can't ref a property, so use a local copy
-                var configValue = this.configuration.SomePropertyToBeSavedAndWithADefault;
-                if (ImGui.Checkbox("Random Config Bool", ref configValue))
+
+                var oofOnDeath = this.configuration.OofOnFall;
+
+                if (ImGui.Checkbox("Play oof on death", ref oofOnDeath))
                 {
-                    this.configuration.SomePropertyToBeSavedAndWithADefault = configValue;
+                    this.configuration.OofOnDeath = oofOnDeath;
+                    // can save immediately on change, if you don't want to provide a "Save and Close" button
+                    this.configuration.Save();
+                }
+
+                var oofOnFall = this.configuration.OofOnFall;
+
+                if (ImGui.Checkbox("Play oof on fall damage", ref oofOnFall))
+                {
+                    this.configuration.OofOnFall = oofOnFall;
                     // can save immediately on change, if you don't want to provide a "Save and Close" button
                     this.configuration.Save();
                 }

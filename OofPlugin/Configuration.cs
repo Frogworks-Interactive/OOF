@@ -9,7 +9,9 @@ namespace SamplePlugin
     {
         public int Version { get; set; } = 0;
 
-        public bool SomePropertyToBeSavedAndWithADefault { get; set; } = true;
+
+        public bool OofOnFall { get; set; } = true;
+        public bool OofOnDeath { get; set; } = true;
 
         // the below exist just to make saving less cumbersome
 
