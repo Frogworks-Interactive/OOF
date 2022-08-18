@@ -1,7 +1,6 @@
 ﻿using ImGuiNET;
 using System;
 using System.Numerics;
-using Dalamud.Game.ClientState.Conditions;
 
 namespace SamplePlugin
 {
@@ -13,10 +12,7 @@ namespace SamplePlugin
         private Plugin plugin;
 
 
-        private float prevPos { get; set; } = 0;
-        private float prevVel { get; set; } = 0;
-        private float distFallen { get; set; } = 0;
-        private float distJump { get; set; } = 0;
+       
 
         // this extra bool exists for ImGui, since you can't ref a property
         private bool visible = false;
