@@ -196,7 +196,11 @@ namespace SamplePlugin
         /// </summary>
         public void Dispose()
         {
+            this.PluginUi.Dispose();
+            this.CommandManager.RemoveHandler(oofCommand);
+            this.CommandManager.RemoveHandler(oofSettings);
 
+            Framework.Update -= this.FrameworkOnUpdate;
             try
             {
                 while (this.isSoundPlaying)
@@ -211,11 +215,7 @@ namespace SamplePlugin
             {
                 PluginLog.LogError("Failed to dispose tippy controller", ex);
             }
-            this.PluginUi.Dispose();
-            this.CommandManager.RemoveHandler(oofCommand);
-            this.CommandManager.RemoveHandler(oofSettings);
-
-            Framework.Update -= this.FrameworkOnUpdate;
+     
 
         }
 

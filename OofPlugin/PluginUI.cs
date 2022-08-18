@@ -12,7 +12,6 @@ namespace SamplePlugin
         private Configuration configuration;
         private Plugin plugin;
 
-        private ImGuiScene.TextureWrap goatImage;
 
         private float prevPos { get; set; } = 0;
         private float prevVel { get; set; } = 0;
@@ -45,7 +44,6 @@ namespace SamplePlugin
 
         public void Dispose()
         {
-            this.goatImage.Dispose();
         }
 
         public void Draw()
