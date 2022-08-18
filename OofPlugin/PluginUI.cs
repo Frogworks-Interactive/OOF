@@ -97,9 +97,9 @@ namespace SamplePlugin
                 ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse))
             {
 
-                var oofOnDeath = this.configuration.OofOnFall;
+                var oofOnDeath = this.configuration.OofOnDeath;
 
-                if (ImGui.Checkbox("Play oof on death", ref oofOnDeath))
+                if (ImGui.Checkbox("Play oof on death###play-oof-death", ref oofOnDeath))
                 {
                     this.configuration.OofOnDeath = oofOnDeath;
                     // can save immediately on change, if you don't want to provide a "Save and Close" button
@@ -108,9 +108,16 @@ namespace SamplePlugin
 
                 var oofOnFall = this.configuration.OofOnFall;
 
-                if (ImGui.Checkbox("Play oof on fall damage", ref oofOnFall))
+                if (ImGui.Checkbox("Play oof on fall damage###play-oof-fall", ref oofOnFall))
                 {
                     this.configuration.OofOnFall = oofOnFall;
+                    // can save immediately on change, if you don't want to provide a "Save and Close" button
+                    this.configuration.Save();
+                }
+                var oofVolume = this.configuration.Volume;
+
+                if (ImGui.SliderFloat("volume", ref oofVolume, 0.0f, 1.0f)) {
+                    this.configuration.Volume = oofVolume;
                     // can save immediately on change, if you don't want to provide a "Save and Close" button
                     this.configuration.Save();
                 }

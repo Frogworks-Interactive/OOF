@@ -11,6 +11,7 @@ namespace SamplePlugin
 
         public bool OofOnFall { get; set; } = true;
         public bool OofOnDeath { get; set; } = true;
+        public float Volume { get; set; } = 0.5f;
 
         // the below exist just to make saving less cumbersome
 

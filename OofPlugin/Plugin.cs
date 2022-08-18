@@ -179,6 +179,7 @@ namespace SamplePlugin
                 this.isSoundPlaying = true;
                 this.reader = new Mp3FileReader(new MemoryStream(this.soundFile));
                 this.waveOut.Init(this.reader);
+                this.waveOut.Volume = Configuration.Volume;
                 this.waveOut.Play();
                 this.waveOut.PlaybackStopped += this.WaveOutOnPlaybackStopped;
             }
