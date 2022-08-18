@@ -83,14 +83,13 @@ namespace SamplePlugin
         private void CheckDeath()
         {
 
-            if (ClientState!.LocalPlayer!.CurrentHp == 0)
+            if (ClientState!.LocalPlayer!.CurrentHp == 0 && !isDead)
             {
                 PlaySound();
                 isDead = true;
             } else
             {
                 isDead = false;
-
             }
         }
         private void CheckFallen()

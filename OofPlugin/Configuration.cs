@@ -9,7 +9,6 @@ namespace SamplePlugin
     {
         public int Version { get; set; } = 0;
 
-
         public bool OofOnFall { get; set; } = true;
         public bool OofOnDeath { get; set; } = true;
 
