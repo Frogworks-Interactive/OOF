@@ -108,22 +108,21 @@ namespace SamplePlugin
 
 
             }
-            else
+
+            else if (wasJumping && !isJumping)
             {
-                if (wasJumping)
-                {
-                    // stopped falling
-                    distFallen = pos;
+                // stopped falling
+                distFallen = pos;
 
-                    // fell enough to take damage
-                    if (distJump - distFallen > 9) {
-                        PlaySound();
-                        PluginLog.Debug("Fell");
-
-                    }
+                // fell enough to take damage
+                if (distJump - distFallen > 9) {
+                    PlaySound();
+                    PluginLog.Debug("Fell");
 
                 }
+
             }
+            
 
             
             // set position for next timestep
