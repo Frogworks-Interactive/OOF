@@ -11,7 +11,7 @@
     "play",
     "sound"
   ],
-  "DalamudApiLevel": 6,
+  "DalamudApiLevel": 7,
   "RepoUrl": "https://github.com/Frogworks-Interactive/OOF",
   "AssemblyVersion": "1.0.2"
 
