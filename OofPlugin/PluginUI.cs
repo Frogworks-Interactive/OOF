@@ -11,9 +11,6 @@ namespace SamplePlugin
         private Configuration configuration;
         private Plugin plugin;
 
-
-       
-
         // this extra bool exists for ImGui, since you can't ref a property
         private bool visible = false;
         public bool Visible
@@ -29,13 +26,10 @@ namespace SamplePlugin
             set { this.settingsVisible = value; }
         }
 
-        // passing in the image here just for simplicity
         public PluginUI(Configuration configuration, Plugin plugin)
         {
             this.configuration = configuration;
             this.plugin = plugin;
-  
-
         }
 
         public void Dispose()
@@ -44,47 +38,8 @@ namespace SamplePlugin
 
         public void Draw()
         {
-            // This is our only draw handler attached to UIBuilder, so it needs to be
-            // able to draw any windows we might have open.
-            // Each method checks its own visibility/state to ensure it only draws when
-            // it actually makes sense.
-            // There are other ways to do this, but it is generally best to keep the number of
-            // draw delegates as low as possible.
-
-         //   DrawMainWindow();
             DrawSettingsWindow();
         }
-
-        public void DrawMainWindow()
-        {
-            if (!Visible)
-            {
-                return;
-            }
-
-            //ImGui.SetNextWindowSize(new Vector2(375, 330), ImGuiCond.FirstUseEver);
-            //ImGui.SetNextWindowSizeConstraints(new Vector2(375, 330), new Vector2(float.MaxValue, float.MaxValue));
-            //if (ImGui.Begin("My Amazing Window", ref this.visible, ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse))
-            //{
-
-            //    if (ImGui.Button("Show Settings"))
-            //    {
-            //        SettingsVisible = true;
-            //    }
-
-            //    ImGui.Text("clientstate");
-
-
-            //    ImGui.Spacing();
-
-            //    ImGui.Text("Have a goat:");
-            //    ImGui.Indent(55);
-            //    ImGui.Image(this.goatImage.ImGuiHandle, new Vector2(this.goatImage.Width, this.goatImage.Height));
-            //    ImGui.Unindent(55);
-            //}
-            //ImGui.End();
-        }
-
         public void DrawSettingsWindow()
         {
             if (!SettingsVisible)
@@ -116,7 +71,8 @@ namespace SamplePlugin
                 }
                 var oofVolume = this.configuration.Volume;
 
-                if (ImGui.SliderFloat("volume", ref oofVolume, 0.0f, 1.0f)) {
+                if (ImGui.SliderFloat("volume", ref oofVolume, 0.0f, 1.0f))
+                {
                     this.configuration.Volume = oofVolume;
                     // can save immediately on change, if you don't want to provide a "Save and Close" button
                     this.configuration.Save();
