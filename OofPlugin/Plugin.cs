@@ -1,20 +1,14 @@
-﻿using Dalamud.Game.ClientState;
-
-using Dalamud.Game.ClientState.Objects.SubKinds;
+﻿using Dalamud.Game;
+using Dalamud.Game.ClientState;
+using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.Command;
 using Dalamud.IoC;
-using Dalamud.Plugin;
 using Dalamud.Logging;
-
-using System.IO;
-using System.Reflection;
+using Dalamud.Plugin;
 using NAudio.Wave;
 using System;
+using System.IO;
 using System.Threading;
-using Dalamud.Game;
-using Dalamud.Game.ClientState.Conditions;
-using Dalamud.Game.ClientState.Objects.Types;
-using Dalamud.Game.ClientState.Objects;
 
 namespace SamplePlugin
 {
@@ -28,26 +22,23 @@ namespace SamplePlugin
         [PluginService] public static Framework Framework { get; private set; } = null!;
         [PluginService] public static ClientState ClientState { get; private set; } = null!;
         [PluginService] public static Condition Condition { get; private set; } = null!;
-        [PluginService] public static ObjectTable ObjectTable { get; private set; } = null!;
 
         private DalamudPluginInterface PluginInterface { get; init; }
         private CommandManager CommandManager { get; init; }
         private Configuration Configuration { get; init; }
         private PluginUI PluginUi { get; init; }
-
-        public PlayerCharacter LocalPlayer { get; set; } = null!;
+        //    public PlayerCharacter LocalPlayer { get; set; } = null!;
 
         // sound
         public bool isSoundPlaying { get; set; } = false;
         private Mp3FileReader? reader;
         private readonly WaveOut waveOut = new();
-
         private byte[] soundFile { get; set; }
 
         //check
         public float prevPos { get; set; } = 0;
         private float prevVel { get; set; } = 0;
-        public float distFallen { get; set; } = 0;
+        //    public float distFallen { get; set; } = 0;
         public float distJump { get; set; } = 0;
         public bool wasJumping { get; set; } = false;
         public bool isDead { get; set; } = false;
@@ -62,8 +53,8 @@ namespace SamplePlugin
             this.Configuration = this.PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
             this.Configuration.Initialize(this.PluginInterface);
 
-            // you might normally want to embed resources and load them from the manifest stream
-            this.PluginUi = new PluginUI(this.Configuration,this );
+            // you might normally want to embed resources and load them from the manifest stream // what if i said no
+            this.PluginUi = new PluginUI(this.Configuration, this);
             var soundfile = File.ReadAllBytes(Path.Combine(PluginInterface.AssemblyLocation.Directory?.FullName!, "oof.mp3"));
             this.soundFile = soundfile;
 
@@ -78,16 +69,31 @@ namespace SamplePlugin
             this.PluginInterface.UiBuilder.Draw += DrawUI;
             this.PluginInterface.UiBuilder.OpenConfigUi += DrawConfigUI;
             Framework.Update += this.FrameworkOnUpdate;
+        }
 
+        private void OnCommand(string command, string args)
+        {
+            if (command == oofCommand) PlaySound();
+            if (command == oofSettings) this.PluginUi.SettingsVisible = true;
+        }
+
+        private void DrawUI()
+        {
+            this.PluginUi.Draw();
+        }
+
+        private void DrawConfigUI()
+        {
+            this.PluginUi.SettingsVisible = true;
         }
         private void CheckDeath()
         {
-
             if (ClientState!.LocalPlayer!.CurrentHp == 0 && !isDead)
             {
                 PlaySound();
                 isDead = true;
-            } else
+            }
+            else if (ClientState!.LocalPlayer!.CurrentHp != 0 && isDead)
             {
                 isDead = false;
             }
@@ -104,26 +110,16 @@ namespace SamplePlugin
             {
                 //started falling
                 if (prevVel < 0.17) distJump = pos;
-
-
             }
 
+            // stopped falling
             else if (wasJumping && !isJumping)
             {
-                // stopped falling
-                distFallen = pos;
-
                 // fell enough to take damage
-                if (distJump - distFallen > 9) {
-                    PlaySound();
-                    PluginLog.Debug("Fell");
-
-                }
+                if (distJump - pos > 9.50) PlaySound();
 
             }
-            
 
-            
             // set position for next timestep
             prevPos = pos;
             prevVel = velocity;
@@ -135,37 +131,14 @@ namespace SamplePlugin
 
             try
             {
-                
-               if (Configuration.OofOnFall) CheckFallen();
-               if (Configuration.OofOnDeath) CheckDeath();
-
-
+                if (Configuration.OofOnFall) CheckFallen();
+                if (Configuration.OofOnDeath) CheckDeath();
             }
-            catch
+            catch (Exception e)
             {
-
+                PluginLog.Error("failed to check for oof condition:", e);
             }
-
         }
-
-    
-        private void OnCommand(string command, string args)
-        {
-            if (command == oofCommand) PlaySound();
-            if (command == oofSettings) this.PluginUi.SettingsVisible = true;
-
-        }
-
-        private void DrawUI()
-        {
-            this.PluginUi.Draw();
-        }
-
-        private void DrawConfigUI()
-        {
-            this.PluginUi.SettingsVisible = true;
-        }
-
 
         /// <summary>
         /// Play sound.
@@ -183,15 +156,21 @@ namespace SamplePlugin
                 this.waveOut.Play();
                 this.waveOut.PlaybackStopped += this.WaveOutOnPlaybackStopped;
             }
-            catch (Exception)
+            catch (Exception e)
             {
                 this.isSoundPlaying = false;
+                PluginLog.Error("failed to play oof:", e);
             }
         }
 
+        private void WaveOutOnPlaybackStopped(object? sender, StoppedEventArgs e)
+        {
+            this.waveOut.PlaybackStopped -= this.WaveOutOnPlaybackStopped;
+            this.isSoundPlaying = false;
+        }
 
         /// <summary>
-        /// Dispose animator.
+        /// dispose
         /// </summary>
         public void Dispose()
         {
@@ -214,15 +193,10 @@ namespace SamplePlugin
             {
                 PluginLog.LogError("Failed to dispose tippy controller", ex);
             }
-     
+
 
         }
 
-        private void WaveOutOnPlaybackStopped(object? sender, StoppedEventArgs e)
-        {
-            this.waveOut.PlaybackStopped -= this.WaveOutOnPlaybackStopped;
-            this.isSoundPlaying = false;
-        }
 
     }
 }
