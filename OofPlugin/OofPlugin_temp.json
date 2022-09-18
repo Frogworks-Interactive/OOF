@@ -11,6 +11,7 @@
     "play",
     "sound"
   ],
-  "RepoUrl": "https://github.com/Frogworks-Interactive/OOF"
+  "RepoUrl": "https://github.com/Frogworks-Interactive/OOF",
+  "AssemblyVersion": "1.0.3"
 
 }
