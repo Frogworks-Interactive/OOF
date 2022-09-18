@@ -1,0 +1,16 @@
+﻿{
+  "Author": "Frogworks Interactive",
+  "Name": "OOF!",
+  "Punchline": "i love roblox!!!",
+  "Description": "Play the OOF! sound on fall and/or death. The Only Plugin You Need!",
+  "InternalName": "OofPlugin",
+  "ApplicableVersion": "any",
+  "Tags": [
+    "OOF",
+    "plugin",
+    "play",
+    "sound"
+  ],
+  "RepoUrl": "https://github.com/Frogworks-Interactive/OOF"
+
+}

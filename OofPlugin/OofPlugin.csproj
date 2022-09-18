@@ -3,10 +3,10 @@
   <PropertyGroup>
     <Authors>Frogworks Interactive</Authors>
     <Company>Frogworks Interactive</Company>
-    <Version>1.0.2</Version>
+    <Version>1.0.3</Version>
     <Description>OOF!</Description>
     <Copyright></Copyright>
-    <PackageProjectUrl>https://github.com/goatcorp/SamplePlugin</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/Frogworks-Interactive/OOF</PackageProjectUrl>
   </PropertyGroup>
 	
   <PropertyGroup>
