@@ -99,9 +99,10 @@ namespace SamplePlugin
             }
         }
         private void CheckFallen()
-        {
+        {   
             // dont run if mounted
-            if (Condition[ConditionFlag.Mounted] || Condition[ConditionFlag.Mounted2] || Condition[ConditionFlag.Mounted2]) return;
+
+            if (Condition[ConditionFlag.Mounted] || Condition[ConditionFlag.Mounted2] || Condition[ConditionFlag.Mounted2] || Condition[ConditionFlag.InCombat]) return;
             var isJumping = Condition[ConditionFlag.Jumping];
 
             var pos = ClientState!.LocalPlayer!.Position.Y;
@@ -128,7 +129,7 @@ namespace SamplePlugin
         private void FrameworkOnUpdate(Framework framework)
         {
             if (ClientState == null || ClientState.LocalPlayer == null) return;
-
+            if (!Configuration.OofInBattle && Condition[ConditionFlag.InCombat]) return;
             try
             {
                 if (Configuration.OofOnFall) CheckFallen();

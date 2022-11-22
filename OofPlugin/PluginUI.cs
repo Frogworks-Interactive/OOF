@@ -54,6 +54,14 @@ namespace SamplePlugin
                     this.configuration.OofOnFall = oofOnFall;
                     this.configuration.Save();
                 }
+                var oofInBattle = this.configuration.OofInBattle;
+
+                if (ImGui.Checkbox("Play oof during combat###play-oof-combat", ref oofInBattle))
+                {
+                    this.configuration.OofInBattle = oofInBattle;
+                    this.configuration.Save();
+                }
+
                 var oofVolume = this.configuration.Volume;
 
                 if (ImGui.SliderFloat("volume", ref oofVolume, 0.0f, 1.0f))
