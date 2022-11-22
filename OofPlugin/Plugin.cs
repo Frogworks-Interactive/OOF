@@ -152,10 +152,16 @@ namespace SamplePlugin
                 if (this.isSoundPlaying) return;
                 this.isSoundPlaying = true;
                 this.reader = new Mp3FileReader(new MemoryStream(this.soundFile));
-                this.waveOut.Init(this.reader);
-                this.waveOut.Volume = Configuration.Volume;
-                this.waveOut.Play();
-                this.waveOut.PlaybackStopped += this.WaveOutOnPlaybackStopped;
+                var volumeStream = new WaveChannel32(this.reader);
+                volumeStream.Volume = Configuration.Volume;
+                volumeStream.PadWithZeroes = false;
+                var player = new WaveOutEvent();
+                player.Init(volumeStream);
+                player.Play();
+                //this.waveOut.Init(this.reader);
+                //this.waveOut.Volume = Configuration.Volume;
+                //this.waveOut.Play();
+                player.PlaybackStopped += this.WaveOutOnPlaybackStopped;
             }
             catch (Exception e)
             {
@@ -166,7 +172,7 @@ namespace SamplePlugin
 
         private void WaveOutOnPlaybackStopped(object? sender, StoppedEventArgs e)
         {
-            this.waveOut.PlaybackStopped -= this.WaveOutOnPlaybackStopped;
+            //this.waveOut.PlaybackStopped -= this.WaveOutOnPlaybackStopped;
             this.isSoundPlaying = false;
         }
 
