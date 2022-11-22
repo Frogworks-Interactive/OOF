@@ -100,10 +100,11 @@ namespace SamplePlugin
         {   
             // dont run if mounted
 
-            if (Condition[ConditionFlag.Mounted] || Condition[ConditionFlag.Mounted2] || Condition[ConditionFlag.Mounted2] || Condition[ConditionFlag.InCombat]) return;
+            if (Condition[ConditionFlag.Mounted] || Condition[ConditionFlag.Mounted2] || Condition[ConditionFlag.InCombat]) return;
             var isJumping = Condition[ConditionFlag.Jumping];
 
             var pos = ClientState!.LocalPlayer!.Position.Y;
+
             var velocity = prevPos - pos;
             if (isJumping && !wasJumping)
             {
