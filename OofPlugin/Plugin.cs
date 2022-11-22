@@ -27,7 +27,6 @@ namespace SamplePlugin
         private CommandManager CommandManager { get; init; }
         private Configuration Configuration { get; init; }
         private PluginUI PluginUi { get; init; }
-        //    public PlayerCharacter LocalPlayer { get; set; } = null!;
 
         // sound
         public bool isSoundPlaying { get; set; } = false;
@@ -38,7 +37,6 @@ namespace SamplePlugin
         //check
         public float prevPos { get; set; } = 0;
         private float prevVel { get; set; } = 0;
-        //    public float distFallen { get; set; } = 0;
         public float distJump { get; set; } = 0;
         public bool wasJumping { get; set; } = false;
         public bool isDead { get; set; } = false;
@@ -154,13 +152,11 @@ namespace SamplePlugin
                 this.reader = new Mp3FileReader(new MemoryStream(this.soundFile));
                 var volumeStream = new WaveChannel32(this.reader);
                 volumeStream.Volume = Configuration.Volume;
-                volumeStream.PadWithZeroes = false;
+                volumeStream.PadWithZeroes = false; // you need this or else playbackstopped event will not fire
                 var player = new WaveOutEvent();
                 player.Init(volumeStream);
                 player.Play();
-                //this.waveOut.Init(this.reader);
-                //this.waveOut.Volume = Configuration.Volume;
-                //this.waveOut.Play();
+                
                 player.PlaybackStopped += this.WaveOutOnPlaybackStopped;
             }
             catch (Exception e)
@@ -198,7 +194,7 @@ namespace SamplePlugin
             }
             catch (Exception ex)
             {
-                PluginLog.LogError("Failed to dispose tippy controller", ex);
+                PluginLog.LogError("Failed to dispose oofplugin controller", ex);
             }
 
 
