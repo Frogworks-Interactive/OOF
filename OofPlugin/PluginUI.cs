@@ -6,7 +6,7 @@ using System.Linq;
 using System.Numerics;
 using System.Xml.Linq;
 
-namespace SamplePlugin
+namespace OofPlugin
 {
     class PluginUI : IDisposable
     {

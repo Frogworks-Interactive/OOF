@@ -11,8 +11,9 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Channels;
+//shoutout anna clemens
 
-namespace SamplePlugin
+namespace OofPlugin
 {
     public sealed class Plugin : IDalamudPlugin
     {
@@ -30,14 +31,14 @@ namespace SamplePlugin
         private Configuration Configuration { get; init; }
         private PluginUI PluginUi { get; init; }
 
+        // i love global variables!!!! the more global the more globaly it gets
         // sound
         public bool isSoundPlaying { get; set; } = false;
         private WaveFileReader? reader;
         private DirectSoundOut? soundOut;
+        private byte[] soundFile { get; set; }
 
-         private byte[] soundFile { get; set; }
-
-        //check
+        //check for fall
         public float prevPos { get; set; } = 0;
         private float prevVel { get; set; } = 0;
         public float distJump { get; set; } = 0;
@@ -53,11 +54,9 @@ namespace SamplePlugin
 
             this.Configuration = this.PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
             this.Configuration.Initialize(this.PluginInterface);
-
-            // you might normally want to embed resources and load them from the manifest stream // what if i said no
             this.PluginUi = new PluginUI(this.Configuration, this);
-            //  var soundfile = File.ReadAllBytes(Path.Combine(PluginInterface.AssemblyLocation.Directory?.FullName!, "oof.mp3"));
-            //   this.soundFile = soundfile;
+
+            // load audio file. idk if this the best way
             this.soundFile = File.ReadAllBytes(Path.Combine(PluginInterface.AssemblyLocation.Directory?.FullName!, "oof.wav"));
 
             this.CommandManager.AddHandler(oofCommand, new CommandInfo(OnCommand)
@@ -88,47 +87,6 @@ namespace SamplePlugin
         {
             this.PluginUi.SettingsVisible = true;
         }
-        private void CheckDeath()
-        {
-            if (ClientState!.LocalPlayer!.CurrentHp == 0 && !isDead)
-            {
-                PlaySound();
-                isDead = true;
-            }
-            else if (ClientState!.LocalPlayer!.CurrentHp != 0 && isDead)
-            {
-                isDead = false;
-            }
-        }
-        private void CheckFallen()
-        {   
-            // dont run if mounted
-
-            if (Condition[ConditionFlag.Mounted] || Condition[ConditionFlag.Mounted2] || Condition[ConditionFlag.InCombat]) return;
-            var isJumping = Condition[ConditionFlag.Jumping];
-
-            var pos = ClientState!.LocalPlayer!.Position.Y;
-
-            var velocity = prevPos - pos;
-            if (isJumping && !wasJumping)
-            {
-                //started falling
-                if (prevVel < 0.17) distJump = pos;
-            }
-
-            // stopped falling
-            else if (wasJumping && !isJumping)
-            {
-                // fell enough to take damage
-                if (distJump - pos > 9.50) PlaySound();
-
-            }
-
-            // set position for next timestep
-            prevPos = pos;
-            prevVel = velocity;
-            wasJumping = isJumping == true;
-        }
         private void FrameworkOnUpdate(Framework framework)
         {
             if (ClientState == null || ClientState.LocalPlayer == null) return;
@@ -145,7 +103,51 @@ namespace SamplePlugin
         }
 
         /// <summary>
-        /// Play sound.
+        /// check if player has died
+        /// </summary>
+        private void CheckDeath()
+        {
+            if (ClientState!.LocalPlayer!.CurrentHp == 0 && !isDead)
+            {
+                PlaySound();
+                isDead = true;
+            }
+            else if (ClientState!.LocalPlayer!.CurrentHp != 0 && isDead)
+            {
+                isDead = false;
+            }
+        }
+        /// <summary>
+        /// check if player has taken fall damage (brute force way)
+        /// </summary>
+        private void CheckFallen()
+        {   
+            // dont run if mounted
+            if (Condition[ConditionFlag.Mounted] || Condition[ConditionFlag.Mounted2] || Condition[ConditionFlag.InCombat]) return;
+           
+            var isJumping = Condition[ConditionFlag.Jumping];
+            var pos = ClientState!.LocalPlayer!.Position.Y;
+            var velocity = prevPos - pos;
+
+            if (isJumping && !wasJumping)
+            {
+                if (prevVel < 0.17) distJump = pos; //started falling
+
+            }
+            else if (wasJumping && !isJumping)  // stopped falling
+            {
+                if (distJump - pos > 9.50) PlaySound(); // fell enough to take damage
+            }
+
+            // set position for next timestep
+            prevPos = pos;
+            prevVel = velocity;
+            wasJumping = isJumping;
+        }
+
+        /// <summary>
+        /// Play sound but without referencing windows.forms.
+        /// i hope this doesnt leak memory
         /// </summary>
         /// <param name="num">sound to play.</param>
         public void PlaySound()
@@ -153,53 +155,43 @@ namespace SamplePlugin
             try
             {
                 if (this.isSoundPlaying) return;
+
                 var soundDevice = DirectSoundOut.Devices.FirstOrDefault();
                 if (soundDevice == null)
                 {
                     PluginLog.Error("no sound device lmao");
-
                     return;
                 }
+
                 this.isSoundPlaying = true;
                 this.reader = new WaveFileReader(new MemoryStream(this.soundFile));
+
                 var audioStream = new WaveChannel32(this.reader);
                 audioStream.Volume = Configuration.Volume;
                 audioStream.PadWithZeroes = false; // you need this or else playbackstopped event will not fire
-                // thank u anna clemens once again for this fix
-
+                //shoutout anna clemens for the winforms fix
                 soundOut = new DirectSoundOut(soundDevice.Guid);
-
-                try
-                {
-                    soundOut.Init(audioStream);
-                    soundOut.Play();
-                    PluginLog.Log(soundDevice.Description);
-                    soundOut.PlaybackStopped += onPlaybackStopped;
-
-                    //while (output.PlaybackState == PlaybackState.Playing)
-                    //{
-                    //    Thread.Sleep(500);
-                    //}
-                }
-                catch (Exception ex)
-                {
-                    PluginLog.LogError(ex, "Exception playing sound");
-                }
-                
+                soundOut.Init(audioStream);
+                soundOut.Play();
+                soundOut.PlaybackStopped += onPlaybackStopped;
 
             }
             catch (Exception e)
             {
                 this.isSoundPlaying = false;
-                PluginLog.Error("failed to play oof:", e);
+                PluginLog.Error(e,"failed to play oof sound");
             }
         }
 
+        /// <summary>
+        /// run after sound has played.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void onPlaybackStopped(object? sender, StoppedEventArgs e)
         {
             this.soundOut!.PlaybackStopped -= this.onPlaybackStopped;
             this.isSoundPlaying = false;
-
         }
 
         /// <summary>
@@ -218,14 +210,13 @@ namespace SamplePlugin
                 {
                     Thread.Sleep(100);
                 }
-
                 this.isSoundPlaying = false ;
                 this.reader!.Dispose();
                 this.soundOut!.Dispose();
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                PluginLog.LogError("Failed to dispose oofplugin controller", ex);
+                PluginLog.LogError("Failed to dispose oofplugin controller", e);
             }
 
 
