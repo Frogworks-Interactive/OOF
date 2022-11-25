@@ -1,15 +1,15 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
+    <PropertyGroup>
     <Authors>Frogworks Interactive</Authors>
     <Company>Frogworks Interactive</Company>
     <Version>1.0.4</Version>
     <Description>OOF!</Description>
     <Copyright></Copyright>
     <PackageProjectUrl>https://github.com/Frogworks-Interactive/OOF</PackageProjectUrl>
-  </PropertyGroup>
+    </PropertyGroup>
 	
-  <PropertyGroup>
+    <PropertyGroup>
     <TargetFramework>net6.0-windows</TargetFramework>
     <Platforms>x64</Platforms>
     <Nullable>enable</Nullable>
@@ -22,21 +22,28 @@
 	<Deterministic>false</Deterministic>
 	<NullableContextOptions>enable</NullableContextOptions>
 	<GenerateAssemblyFileVersionAttribute>false</GenerateAssemblyFileVersionAttribute>
-  </PropertyGroup>
+    </PropertyGroup>
 
-  <ItemGroup>
+    <ItemGroup>
 
-	  <Content Include="..\Data\oof.mp3">
-		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		  <Visible>false</Visible>
-	  </Content>
-  </ItemGroup>
+	    <Content Include="..\Data\oof.mp3">
+		    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		    <Visible>false</Visible>
+	    </Content>
+    </ItemGroup>
 
-  <PropertyGroup>
-    <DalamudLibPath>$(appdata)\XIVLauncher\addon\Hooks\dev\</DalamudLibPath>
-  </PropertyGroup>
+    <PropertyGroup>
+        <DalamudLibPath>$(appdata)\XIVLauncher\addon\Hooks\dev\</DalamudLibPath>
+		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+	</PropertyGroup>
+	
+    <PropertyGroup Condition="'$(OS)' != 'Windows_NT' OR '$(CI)' == 'true'">
+	    <DalamudLibPath>$(DALAMUD_HOME)/</DalamudLibPath>
+	    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    </PropertyGroup>
 
-  <ItemGroup>
+
+	<ItemGroup>
     <PackageReference Include="DalamudPackager" Version="2.1.8" />
     <PackageReference Include="NAudio" Version="2.1.0" />
     <Reference Include="FFXIVClientStructs">
