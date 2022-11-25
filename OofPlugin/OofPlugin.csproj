@@ -3,7 +3,7 @@
     <PropertyGroup>
     <Authors>Frogworks Interactive</Authors>
     <Company>Frogworks Interactive</Company>
-    <Version>1.0.4</Version>
+    <Version>1.0.5</Version>
     <Description>OOF!</Description>
     <Copyright></Copyright>
     <PackageProjectUrl>https://github.com/Frogworks-Interactive/OOF</PackageProjectUrl>
@@ -26,7 +26,7 @@
 
     <ItemGroup>
 
-	    <Content Include="..\Data\oof.mp3">
+	    <Content Include="..\Data\oof.wav">
 		    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		    <Visible>false</Visible>
 	    </Content>
@@ -36,16 +36,19 @@
         <DalamudLibPath>$(appdata)\XIVLauncher\addon\Hooks\dev\</DalamudLibPath>
 		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 	</PropertyGroup>
-	
-    <PropertyGroup Condition="'$(OS)' != 'Windows_NT' OR '$(CI)' == 'true'">
-	    <DalamudLibPath>$(DALAMUD_HOME)/</DalamudLibPath>
-	    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-    </PropertyGroup>
+
+	<PropertyGroup Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))'">
+		<DalamudLibPath>$(DALAMUD_HOME)</DalamudLibPath>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(IsCI)' == 'true'">
+		<DalamudLibPath>$(HOME)/dalamud</DalamudLibPath>
+	</PropertyGroup>
 
 
 	<ItemGroup>
     <PackageReference Include="DalamudPackager" Version="2.1.8" />
-    <PackageReference Include="NAudio" Version="2.1.0" />
+	<PackageReference Include="NAudio.Core" Version="2.1.0"/>
+	<PackageReference Include="NAudio.Wasapi" Version="2.1.0"/>		
     <Reference Include="FFXIVClientStructs">
       <HintPath>$(DalamudLibPath)FFXIVClientStructs.dll</HintPath>
       <Private>false</Private>

@@ -14,7 +14,6 @@ namespace SamplePlugin
         public float Volume { get; set; } = 0.5f;
         public bool OofInBattle { get; set; } = false;
 
-
         // the below exist just to make saving less cumbersome
 
         [NonSerialized]

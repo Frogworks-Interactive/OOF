@@ -8,7 +8,9 @@ using Dalamud.Plugin;
 using NAudio.Wave;
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading;
+using System.Threading.Channels;
 
 namespace SamplePlugin
 {
@@ -30,9 +32,10 @@ namespace SamplePlugin
 
         // sound
         public bool isSoundPlaying { get; set; } = false;
-        private Mp3FileReader? reader;
-        private readonly WaveOut waveOut = new();
-        private byte[] soundFile { get; set; }
+        private WaveFileReader? reader;
+        private DirectSoundOut? soundOut;
+
+         private byte[] soundFile { get; set; }
 
         //check
         public float prevPos { get; set; } = 0;
@@ -53,8 +56,9 @@ namespace SamplePlugin
 
             // you might normally want to embed resources and load them from the manifest stream // what if i said no
             this.PluginUi = new PluginUI(this.Configuration, this);
-            var soundfile = File.ReadAllBytes(Path.Combine(PluginInterface.AssemblyLocation.Directory?.FullName!, "oof.mp3"));
-            this.soundFile = soundfile;
+            //  var soundfile = File.ReadAllBytes(Path.Combine(PluginInterface.AssemblyLocation.Directory?.FullName!, "oof.mp3"));
+            //   this.soundFile = soundfile;
+            this.soundFile = File.ReadAllBytes(Path.Combine(PluginInterface.AssemblyLocation.Directory?.FullName!, "oof.wav"));
 
             this.CommandManager.AddHandler(oofCommand, new CommandInfo(OnCommand)
             {
@@ -149,16 +153,40 @@ namespace SamplePlugin
             try
             {
                 if (this.isSoundPlaying) return;
+                var soundDevice = DirectSoundOut.Devices.FirstOrDefault();
+                if (soundDevice == null)
+                {
+                    PluginLog.Error("no sound device lmao");
+
+                    return;
+                }
                 this.isSoundPlaying = true;
-                this.reader = new Mp3FileReader(new MemoryStream(this.soundFile));
-                var volumeStream = new WaveChannel32(this.reader);
-                volumeStream.Volume = Configuration.Volume;
-                volumeStream.PadWithZeroes = false; // you need this or else playbackstopped event will not fire
-                var player = new WaveOutEvent();
-                player.Init(volumeStream);
-                player.Play();
+                this.reader = new WaveFileReader(new MemoryStream(this.soundFile));
+                var audioStream = new WaveChannel32(this.reader);
+                audioStream.Volume = Configuration.Volume;
+                audioStream.PadWithZeroes = false; // you need this or else playbackstopped event will not fire
+                // thank u anna clemens once again for this fix
+
+                soundOut = new DirectSoundOut(soundDevice.Guid);
+
+                try
+                {
+                    soundOut.Init(audioStream);
+                    soundOut.Play();
+                    PluginLog.Log(soundDevice.Description);
+                    soundOut.PlaybackStopped += onPlaybackStopped;
+
+                    //while (output.PlaybackState == PlaybackState.Playing)
+                    //{
+                    //    Thread.Sleep(500);
+                    //}
+                }
+                catch (Exception ex)
+                {
+                    PluginLog.LogError(ex, "Exception playing sound");
+                }
                 
-                player.PlaybackStopped += this.WaveOutOnPlaybackStopped;
+
             }
             catch (Exception e)
             {
@@ -167,10 +195,11 @@ namespace SamplePlugin
             }
         }
 
-        private void WaveOutOnPlaybackStopped(object? sender, StoppedEventArgs e)
+        private void onPlaybackStopped(object? sender, StoppedEventArgs e)
         {
-            //this.waveOut.PlaybackStopped -= this.WaveOutOnPlaybackStopped;
+            this.soundOut!.PlaybackStopped -= this.onPlaybackStopped;
             this.isSoundPlaying = false;
+
         }
 
         /// <summary>
@@ -190,8 +219,9 @@ namespace SamplePlugin
                     Thread.Sleep(100);
                 }
 
-                this.isSoundPlaying = true;
-                this.waveOut.Dispose();
+                this.isSoundPlaying = false ;
+                this.reader!.Dispose();
+                this.soundOut!.Dispose();
             }
             catch (Exception ex)
             {

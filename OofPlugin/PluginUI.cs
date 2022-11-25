@@ -1,6 +1,10 @@
 ﻿using ImGuiNET;
+using Lumina.Data;
+using NAudio.Wave;
 using System;
+using System.Linq;
 using System.Numerics;
+using System.Xml.Linq;
 
 namespace SamplePlugin
 {
@@ -69,6 +73,7 @@ namespace SamplePlugin
                     this.configuration.Volume = oofVolume;
                     this.configuration.Save();
                 }
+               
                 if (ImGui.Button("oofed up")) plugin.PlaySound();
 
             }
