@@ -16,9 +16,6 @@ Dalamud plugin that plays the oof sound when you take
 
 
 ## install
-add our custom repository to to dalamud. settings > experimental > custom plugin repositories
+now in the dalamud repository! 
 
-```
-https://raw.githubusercontent.com/Frogworks-Interactive/PluginRepository/main/repo.json
-```
-the plugin should show up in the install menu
+open dalamud plugins options > turn on testing builds
