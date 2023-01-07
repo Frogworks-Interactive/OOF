@@ -5,7 +5,6 @@ using System;
 using System.Linq;
 using System.Numerics;
 using System.Xml.Linq;
-
 namespace OofPlugin
 {
     class PluginUI : IDisposable
@@ -14,6 +13,7 @@ namespace OofPlugin
         private Plugin plugin;
 
         private bool settingsVisible = false;
+       
         public bool SettingsVisible
         {
             get { return this.settingsVisible; }
@@ -75,6 +75,7 @@ namespace OofPlugin
                 }
                
                 if (ImGui.Button("oofed up")) plugin.PlaySound();
+                if (ImGui.Button("Watch Documentary (Youtube)")) plugin.openVideo();
 
             }
 

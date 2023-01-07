@@ -1,5 +1,8 @@
 ﻿using Dalamud.Game;
 using Dalamud.Game.ClientState;
+using Dalamud.Game.ClientState.Party;
+using Dalamud.Game.ClientState.Objects;
+
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.Command;
 using Dalamud.IoC;
@@ -11,6 +14,12 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Channels;
+using System.Collections;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using System.Diagnostics;
+using System.Numerics;
+
 //shoutout anna clemens
 
 namespace OofPlugin
@@ -21,10 +30,13 @@ namespace OofPlugin
 
         private const string oofCommand = "/oof";
         private const string oofSettings = "/oofsettings";
+        private const string oofVideo = "/oofvideo";
 
         [PluginService] public static Framework Framework { get; private set; } = null!;
         [PluginService] public static ClientState ClientState { get; private set; } = null!;
         [PluginService] public static Condition Condition { get; private set; } = null!;
+        [PluginService] public static PartyList PartyList { get; private set; } = null!;
+        [PluginService] public static ObjectTable ObjectTable { get; private set; } = null!;
 
         private DalamudPluginInterface PluginInterface { get; init; }
         private CommandManager CommandManager { get; init; }
@@ -43,7 +55,10 @@ namespace OofPlugin
         private float prevVel { get; set; } = 0;
         public float distJump { get; set; } = 0;
         public bool wasJumping { get; set; } = false;
-        public bool isDead { get; set; } = false;
+        public bool test { get; set; } = false;
+        public Dictionary<uint,bool> deadPlayers { get; set; } = new Dictionary<uint, bool> { };
+
+        public CancellationTokenSource CancelToken;
 
         public Plugin(
             [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
@@ -67,16 +82,28 @@ namespace OofPlugin
             {
                 HelpMessage = "change oof settings"
             });
+            this.CommandManager.AddHandler(oofSettings, new CommandInfo(OnCommand)
+            {
+                HelpMessage = "open Hbomberguy's video on OOF.mp3"
+            });
+
             this.PluginInterface.UiBuilder.Draw += DrawUI;
             this.PluginInterface.UiBuilder.OpenConfigUi += DrawConfigUI;
             Framework.Update += this.FrameworkOnUpdate;
+
+            // lmao
+            CancelToken = new CancellationTokenSource();
+            Task.Run(() => oofAudioPolling(CancelToken.Token));
+
         }
 
         private void OnCommand(string command, string args)
         {
             if (command == oofCommand) PlaySound();
             if (command == oofSettings) this.PluginUi.SettingsVisible = true;
-        }
+            if (command == oofVideo) openVideo();
+
+         }
 
         private void DrawUI()
         {
@@ -101,21 +128,56 @@ namespace OofPlugin
                 PluginLog.Error("failed to check for oof condition:", e);
             }
         }
-
+      
         /// <summary>
         /// check if player has died
         /// </summary>
         private void CheckDeath()
         {
-            if (ClientState!.LocalPlayer!.CurrentHp == 0 && !isDead)
+
+
+            if (PartyList != null && PartyList.Any())
             {
-                PlaySound();
-                isDead = true;
-            }
-            else if (ClientState!.LocalPlayer!.CurrentHp != 0 && isDead)
+                if ( !test)
+                {
+                    try
+                    {
+                        PluginLog.Log($"party count: ${PartyList.Length}");
+                        for (int i = 0; i < 16; i++)
+                        {
+                            //PluginLog.Log($"member: ${PartyList[i]!.Name}");
+                            var allianceMember = PartyList.GetAllianceMemberAddress(i);
+
+                            if (allianceMember != IntPtr.Zero) PluginLog.Log($"member: {i}{PartyList.CreateAllianceMemberReference(allianceMember)!.Name}");
+                        }
+                    } catch (Exception e)
+                    {
+                        PluginLog.LogError("failed at alliance", e);
+                    }
+                  
+                    test = true;
+                }
+                foreach (var member in PartyList)
+                {
+                    if (member.CurrentHP == 0 && !deadPlayers.ContainsKey(member.ObjectId) && member.Territory.Id == ClientState!.TerritoryType) {
+                        deadPlayers[member.ObjectId] = true;
+                    } else if (member.CurrentHP != 0 && deadPlayers.ContainsKey(member.ObjectId))
+                    {
+                        deadPlayers.Remove(member.ObjectId);
+                    }
+                }
+            } else
             {
-                isDead = false;
+                if (ClientState!.LocalPlayer!.CurrentHp == 0 && !deadPlayers.ContainsKey(ClientState!.LocalPlayer!.ObjectId))
+                {
+                    deadPlayers[ClientState!.LocalPlayer!.ObjectId] = true;
+                }
+                else if (ClientState!.LocalPlayer!.CurrentHp != 0 && deadPlayers.ContainsKey(ClientState!.LocalPlayer!.ObjectId))
+                {
+                    deadPlayers.Remove(ClientState!.LocalPlayer!.ObjectId);
+                }
             }
+          
         }
         /// <summary>
         /// check if player has taken fall damage (brute force way)
@@ -132,11 +194,10 @@ namespace OofPlugin
             if (isJumping && !wasJumping)
             {
                 if (prevVel < 0.17) distJump = pos; //started falling
-
             }
             else if (wasJumping && !isJumping)  // stopped falling
             {
-                if (distJump - pos > 9.50) PlaySound(); // fell enough to take damage
+                if (distJump - pos > 9.60) PlaySound(); // fell enough to take damage // i guessed and checked this distance value btw
             }
 
             // set position for next timestep
@@ -149,13 +210,13 @@ namespace OofPlugin
         /// Play sound but without referencing windows.forms.
         /// i hope this doesnt leak memory
         /// </summary>
-        /// <param name="num">sound to play.</param>
-        public void PlaySound()
+        /// <param name="player">optional player ObjectId param</param>
+        public void PlaySound(uint playerId = 0)
         {
             try
             {
-                if (this.isSoundPlaying) return;
-
+                if (this.isSoundPlaying) this.soundOut!.Stop();
+              
                 var soundDevice = DirectSoundOut.Devices.FirstOrDefault();
                 if (soundDevice == null)
                 {
@@ -195,6 +256,56 @@ namespace OofPlugin
         }
 
         /// <summary>
+        /// open the hbomberguy video on oof
+        /// </summary>
+        public void openVideo()
+        {
+            ProcessStartInfo openVideo = new ProcessStartInfo
+            {
+                FileName = "https://www.youtube.com/watch?v=0twDETh6QaI",
+                UseShellExecute = true
+            };
+            Process.Start(openVideo);
+        }
+
+        /// <summary>
+        /// check deadPlayers every once in a while. prevents multiple oof from playing too fast
+        /// </summary>
+        /// <param name="token"> cancellation token</param>
+        private void oofAudioPolling(CancellationToken token)
+        {
+            while (true)
+            {
+                if (token.IsCancellationRequested) break;
+                Task.Delay(200).Wait();
+                if (deadPlayers.Any())
+                {
+                    foreach (var player in deadPlayers)
+                    {
+                        if (player.Value)
+                        {
+                    
+                            var playerObject = ObjectTable.SearchById(player.Key);
+                            if (playerObject != null)
+                            {
+                                var localPlayerPos = ClientState!.LocalPlayer!.Position;
+                               var distance = Vector3.Distance(localPlayerPos,playerObject.Position);
+                            }
+                            
+
+                            PlaySound();
+                            deadPlayers[player.Key] = false;
+                            break;
+                        }
+
+                    }
+
+                }
+            }
+        }
+
+
+        /// <summary>
         /// dispose
         /// </summary>
         public void Dispose()
@@ -202,6 +313,9 @@ namespace OofPlugin
             this.PluginUi.Dispose();
             this.CommandManager.RemoveHandler(oofCommand);
             this.CommandManager.RemoveHandler(oofSettings);
+            this.CommandManager.RemoveHandler(oofVideo);
+            CancelToken.Cancel();
+            CancelToken.Dispose();
 
             Framework.Update -= this.FrameworkOnUpdate;
             try
@@ -211,6 +325,7 @@ namespace OofPlugin
                     Thread.Sleep(100);
                 }
                 this.isSoundPlaying = false ;
+
                 this.reader!.Dispose();
                 this.soundOut!.Dispose();
             }
