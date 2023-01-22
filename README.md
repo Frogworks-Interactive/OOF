@@ -4,6 +4,7 @@
 Dalamud plugin that plays the oof sound when you take 
 - fall damage
 - die
+- party/alliance members die
 - run /oof command
 
 #### play oof sound:
