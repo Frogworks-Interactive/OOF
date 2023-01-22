@@ -5,12 +5,25 @@ using System;
 using System.Linq;
 using System.Numerics;
 using System.Xml.Linq;
+using Dalamud.Interface.ImGuiFileDialog;
+using Dalamud.Interface;
+using FFXIVClientStructs.FFXIV.Client.Graphics.Render;
+using System.Collections.Generic;
+using ImGuiScene;
+using Lumina.Models.Materials;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+using Dalamud.Logging;
+using System.Threading;
+using System.IO;
+using System.Text.RegularExpressions;
+
 namespace OofPlugin
 {
     class PluginUI : IDisposable
     {
         private Configuration configuration;
         private Plugin plugin;
+        private FileDialogManager manager { get; }
 
         private bool settingsVisible = false;
        
@@ -24,6 +37,10 @@ namespace OofPlugin
         {
             this.configuration = configuration;
             this.plugin = plugin;
+            this.manager = new FileDialogManager
+            {
+                AddedWindowFlags = ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoDocking,
+            };
         }
 
         public void Dispose()
@@ -38,7 +55,7 @@ namespace OofPlugin
         {
             if (!SettingsVisible) return;
 
-            ImGui.SetNextWindowSize(new Vector2(232, 200), ImGuiCond.Always);
+            ImGui.SetNextWindowSize(new Vector2(272, 340), ImGuiCond.Always);
             if (ImGui.Begin("oof options", ref this.settingsVisible,
                 ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse))
             {
@@ -74,12 +91,79 @@ namespace OofPlugin
                     this.configuration.Save();
                 }
                
-                if (ImGui.Button("oofed up")) plugin.PlaySound();
-                if (ImGui.Button("Watch Documentary (Youtube)")) plugin.openVideo();
+                ImGui.Separator();
+                ImGui.TextUnformatted("Loaded SoundFile:");
+                if (ImGui.Button("Play")) plugin.PlaySound();
+                ImGui.SameLine();
+
+
+                if (this.configuration.DefaultSoundImportPath.Length > 0)
+                {
+                    var formatString = Regex.Match(this.configuration.DefaultSoundImportPath, @"[^\\]+$");
+                    if (formatString.Success)
+                    {
+                        ImGui.TextUnformatted(formatString.Value);
+                    }
+                }
+                else
+                {
+                    ImGui.TextUnformatted("Original Oof.wav");
+                }
+
+                if (ImGui.Button("Browse .WAV sound file"))
+                {
+                    void UpdatePath(bool success, string path)
+                    {
+                        if (!success || path.Length == 0)
+                        {
+                        return;
+                        }
+                        this.configuration.DefaultSoundImportPath = path;
+                        this.configuration.Save();
+                        plugin.loadSoundFile();
+                }
+
+                    manager.OpenFileDialog("Open Image...", "Audio{.wav}", UpdatePath);
+                    }
+                    ImGui.SameLine();
+                if (ImGui.Button("reset"))
+                {
+                    this.configuration.DefaultSoundImportPath = string.Empty;
+                    this.configuration.Save();
+                    plugin.loadSoundFile();
+
+                }
+                ImGui.Separator();
+                ImGui.TextWrapped("Learn about the history behind the Roblox Oof with Hbomberguy's Documentary.");
+
+
+                if (ImGui.Button("Watch on Youtube")) plugin.openVideo();
+
+                ImGui.TextWrapped("Original Oof sound by Joey Kuras");
+
+                this.manager.Draw();
+
+
 
             }
 
             ImGui.End();
+        }
+        // Set up the file selector with the right flags and custom side bar items.
+        public static FileDialogManager SetupFileManager()
+        {
+            var fileManager = new FileDialogManager
+            {
+                AddedWindowFlags = ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoDocking,
+            };
+
+           
+
+            // Remove Videos and Music.
+            fileManager.CustomSideBarItems.Add(("Videos", string.Empty, 0, -1));
+            fileManager.CustomSideBarItems.Add(("Music", string.Empty, 0, -1));
+
+            return fileManager;
         }
     }
 }

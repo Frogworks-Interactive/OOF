@@ -72,7 +72,7 @@ namespace OofPlugin
             this.PluginUi = new PluginUI(this.Configuration, this);
 
             // load audio file. idk if this the best way
-            this.soundFile = File.ReadAllBytes(Path.Combine(PluginInterface.AssemblyLocation.Directory?.FullName!, "oof.wav"));
+            loadSoundFile();
 
             this.CommandManager.AddHandler(oofCommand, new CommandInfo(OnCommand)
             {
@@ -82,9 +82,9 @@ namespace OofPlugin
             {
                 HelpMessage = "change oof settings"
             });
-            this.CommandManager.AddHandler(oofSettings, new CommandInfo(OnCommand)
+            this.CommandManager.AddHandler(oofVideo, new CommandInfo(OnCommand)
             {
-                HelpMessage = "open Hbomberguy's video on OOF.mp3"
+                HelpMessage = "open Hbomberguy video on OOF.mp3"
             });
 
             this.PluginInterface.UiBuilder.Draw += DrawUI;
@@ -96,7 +96,17 @@ namespace OofPlugin
             Task.Run(() => oofAudioPolling(CancelToken.Token));
 
         }
+        public void loadSoundFile()
+        {
+            if (Configuration.DefaultSoundImportPath.Length == 0)
+            {
+                var path = Path.Combine(PluginInterface.AssemblyLocation.Directory?.FullName!, "oof.wav");
+                this.soundFile = File.ReadAllBytes(path);
 
+                return;
+            }
+            this.soundFile = File.ReadAllBytes(Configuration.DefaultSoundImportPath);
+        }
         private void OnCommand(string command, string args)
         {
             if (command == oofCommand) PlaySound();
@@ -134,29 +144,38 @@ namespace OofPlugin
         /// </summary>
         private void CheckDeath()
         {
-
-
-            if (PartyList != null && PartyList.Any())
+            if (Configuration.OofInBattle && PartyList != null && PartyList.Any())
             {
-                if ( !test)
+                if(PartyList.Length == 8 && PartyList.GetAllianceMemberAddress(0) != IntPtr.Zero) // the worst "is alliance" check
                 {
                     try
                     {
-                        PluginLog.Log($"party count: ${PartyList.Length}");
                         for (int i = 0; i < 16; i++)
                         {
-                            //PluginLog.Log($"member: ${PartyList[i]!.Name}");
-                            var allianceMember = PartyList.GetAllianceMemberAddress(i);
+                            var allianceMemberAddress = PartyList.GetAllianceMemberAddress(i);
 
-                            if (allianceMember != IntPtr.Zero) PluginLog.Log($"member: {i}{PartyList.CreateAllianceMemberReference(allianceMember)!.Name}");
+                            if (allianceMemberAddress != IntPtr.Zero)
+                            {
+                                var allianceMember = PartyList.CreateAllianceMemberReference(allianceMemberAddress);
+                                if (allianceMember.CurrentHP == 0 && !deadPlayers.ContainsKey(allianceMember.ObjectId))
+                                {
+                                    deadPlayers[allianceMember.ObjectId] = true;
+                                }
+                                else if (allianceMember.CurrentHP != 0 && deadPlayers.ContainsKey(allianceMember.ObjectId))
+                                {
+                                    deadPlayers.Remove(allianceMember.ObjectId);
+                                }
+
+                            }
+
                         }
-                    } catch (Exception e)
-                    {
-                        PluginLog.LogError("failed at alliance", e);
                     }
-                  
-                    test = true;
+                    catch (Exception e)
+                    {
+                        PluginLog.LogError("failed at alliance", e.Message);
+                    }
                 }
+                  
                 foreach (var member in PartyList)
                 {
                     if (member.CurrentHP == 0 && !deadPlayers.ContainsKey(member.ObjectId) && member.Territory.Id == ClientState!.TerritoryType) {
@@ -210,8 +229,8 @@ namespace OofPlugin
         /// Play sound but without referencing windows.forms.
         /// i hope this doesnt leak memory
         /// </summary>
-        /// <param name="player">optional player ObjectId param</param>
-        public void PlaySound(uint playerId = 0)
+        /// <param name="volume">optional volume param</param>
+        public void PlaySound(float volume = 1)
         {
             try
             {
@@ -228,7 +247,7 @@ namespace OofPlugin
                 this.reader = new WaveFileReader(new MemoryStream(this.soundFile));
 
                 var audioStream = new WaveChannel32(this.reader);
-                audioStream.Volume = Configuration.Volume;
+                audioStream.Volume = Configuration.Volume * volume;
                 audioStream.PadWithZeroes = false; // you need this or else playbackstopped event will not fire
                 //shoutout anna clemens for the winforms fix
                 soundOut = new DirectSoundOut(soundDevice.Guid);

@@ -3,14 +3,16 @@
     <PropertyGroup>
     <Authors>Frogworks Interactive</Authors>
     <Company>Frogworks Interactive</Company>
-    <Version>1.0.5</Version>
-    <Description>OOF!</Description>
+    <Version>1.1.0.0</Version>
+		<AssemblyVersion>1.1.0.0</AssemblyVersion>
+
+		<Description>OOF!</Description>
     <Copyright></Copyright>
     <PackageProjectUrl>https://github.com/Frogworks-Interactive/OOF</PackageProjectUrl>
     </PropertyGroup>
 	
     <PropertyGroup>
-    <TargetFramework>net6.0-windows</TargetFramework>
+    <TargetFramework>net7.0-windows</TargetFramework>
     <Platforms>x64</Platforms>
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
@@ -46,9 +48,9 @@
 
 
 	<ItemGroup>
-    <PackageReference Include="DalamudPackager" Version="2.1.8" />
-	<PackageReference Include="NAudio.Core" Version="2.1.0"/>
-	<PackageReference Include="NAudio.Wasapi" Version="2.1.0"/>		
+    <PackageReference Include="DalamudPackager" Version="2.1.10" />
+	<PackageReference Include="NAudio.Core" Version="2.1.0" />
+	<PackageReference Include="NAudio.Wasapi" Version="2.1.0" />		
     <Reference Include="FFXIVClientStructs">
       <HintPath>$(DalamudLibPath)FFXIVClientStructs.dll</HintPath>
       <Private>false</Private>
