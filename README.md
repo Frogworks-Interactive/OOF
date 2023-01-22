@@ -1,3 +1,4 @@
+![oof plugin logo](/Data/logo.png)
 # OOF!
 
 Dalamud plugin that plays the oof sound when you take 
