@@ -51,46 +51,69 @@ namespace OofPlugin
         {
             DrawSettingsWindow();
         }
+
+        public void CheckMark()
+        {
+
+        }
         public void DrawSettingsWindow()
         {
             if (!SettingsVisible) return;
 
-            ImGui.SetNextWindowSize(new Vector2(272, 340), ImGuiCond.Always);
+            ImGui.SetNextWindowSize(new Vector2(400, 340), ImGuiCond.Always);
             if (ImGui.Begin("oof options", ref this.settingsVisible,
                 ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse))
             {
-
-                var oofOnDeath = this.configuration.OofOnDeath;
-
-                if (ImGui.Checkbox("Play oof on death###play-oof-death", ref oofOnDeath))
-                {
-                    this.configuration.OofOnDeath = oofOnDeath;
-                    this.configuration.Save();
-                }
-
-                var oofOnFall = this.configuration.OofOnFall;
-
-                if (ImGui.Checkbox("Play oof on fall damage###play-oof-fall", ref oofOnFall))
-                {
-                    this.configuration.OofOnFall = oofOnFall;
-                    this.configuration.Save();
-                }
-                var oofInBattle = this.configuration.OofInBattle;
-
-                if (ImGui.Checkbox("Play oof during combat###play-oof-combat", ref oofInBattle))
-                {
-                    this.configuration.OofInBattle = oofInBattle;
-                    this.configuration.Save();
-                }
-
                 var oofVolume = this.configuration.Volume;
 
-                if (ImGui.SliderFloat("volume", ref oofVolume, 0.0f, 1.0f))
+                if (ImGui.SliderFloat("Volume", ref oofVolume, 0.0f, 1.0f))
                 {
                     this.configuration.Volume = oofVolume;
                     this.configuration.Save();
                 }
-               
+                ImGui.Columns(2);
+
+                var oofOnDeath = this.configuration.OofOnDeath;
+
+                if (ImGui.Checkbox("Oof on death###play-oof-death", ref oofOnDeath))
+                {
+                    this.configuration.OofOnDeath = oofOnDeath;
+                    this.configuration.Save();
+                }
+                ImGui.NextColumn();
+                var oofOnFall = this.configuration.OofOnFall;
+
+                if (ImGui.Checkbox("Oof on fall damage###play-oof-fall", ref oofOnFall))
+                {
+                    this.configuration.OofOnFall = oofOnFall;
+                    this.configuration.Save();
+                }
+                ImGui.NextColumn();
+                var oofInBattle = this.configuration.OofInBattle;
+
+                if (ImGui.Checkbox("Oof during combat###play-oof-combat", ref oofInBattle))
+                {
+                    this.configuration.OofInBattle = oofInBattle;
+                    this.configuration.Save();
+                }
+                ImGui.NextColumn();
+                var oofOthersInParty = this.configuration.OofOthersInParty;
+
+                if (ImGui.Checkbox("Oof on party member's death###play-oof-party", ref oofOthersInParty))
+                {
+                    this.configuration.OofOthersInParty = oofOthersInParty;
+                    this.configuration.Save();
+                }
+                ImGui.NextColumn();
+                var oofOthersInAlliance = this.configuration.OofOthersInAlliance;
+
+                if (ImGui.Checkbox("Oof on alliance member's death###play-oof-alliance", ref oofOthersInAlliance))
+                {
+                    this.configuration.OofOthersInAlliance = oofOthersInAlliance;
+                    this.configuration.Save();
+                }
+                ImGui.Columns(1);
+
                 ImGui.Separator();
                 ImGui.TextUnformatted("Loaded SoundFile:");
                 if (ImGui.Button("Play")) plugin.PlaySound();

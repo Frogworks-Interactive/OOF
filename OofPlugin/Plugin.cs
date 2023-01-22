@@ -144,9 +144,9 @@ namespace OofPlugin
         /// </summary>
         private void CheckDeath()
         {
-            if (Configuration.OofInBattle && PartyList != null && PartyList.Any())
+            if (Configuration.OofInBattle  && PartyList != null && PartyList.Any())
             {
-                if(PartyList.Length == 8 && PartyList.GetAllianceMemberAddress(0) != IntPtr.Zero) // the worst "is alliance" check
+                if(Configuration.OofOthersInAlliance && PartyList.Length == 8 && PartyList.GetAllianceMemberAddress(0) != IntPtr.Zero) // the worst "is alliance" check
                 {
                     try
                     {
@@ -175,16 +175,21 @@ namespace OofPlugin
                         PluginLog.LogError("failed at alliance", e.Message);
                     }
                 }
-                  
-                foreach (var member in PartyList)
+                if (Configuration.OofOthersInParty)
                 {
-                    if (member.CurrentHP == 0 && !deadPlayers.ContainsKey(member.ObjectId) && member.Territory.Id == ClientState!.TerritoryType) {
-                        deadPlayers[member.ObjectId] = true;
-                    } else if (member.CurrentHP != 0 && deadPlayers.ContainsKey(member.ObjectId))
+                    foreach (var member in PartyList)
                     {
-                        deadPlayers.Remove(member.ObjectId);
+                        if (member.CurrentHP == 0 && !deadPlayers.ContainsKey(member.ObjectId) && member.Territory.Id == ClientState!.TerritoryType)
+                        {
+                            deadPlayers[member.ObjectId] = true;
+                        }
+                        else if (member.CurrentHP != 0 && deadPlayers.ContainsKey(member.ObjectId))
+                        {
+                            deadPlayers.Remove(member.ObjectId);
+                        }
                     }
                 }
+               
             } else
             {
                 if (ClientState!.LocalPlayer!.CurrentHp == 0 && !deadPlayers.ContainsKey(ClientState!.LocalPlayer!.ObjectId))
