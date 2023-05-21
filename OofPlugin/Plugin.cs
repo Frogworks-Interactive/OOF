@@ -2,7 +2,6 @@
 using Dalamud.Game.ClientState;
 using Dalamud.Game.ClientState.Party;
 using Dalamud.Game.ClientState.Objects;
-
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.Command;
 using Dalamud.IoC;
@@ -13,16 +12,12 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading;
-using System.Threading.Channels;
-using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using System.Diagnostics;
 using System.Numerics;
 using Dalamud.Utility;
 using Dalamud.Game.ClientState.Objects.SubKinds;
-using Dalamud.Game.ClientState.Objects.Types;
-using static Lumina.Data.Parsing.Layer.LayerCommon;
+
 
 //shoutout anna clemens
 
@@ -46,13 +41,14 @@ namespace OofPlugin
         private CommandManager CommandManager { get; init; }
         private Configuration Configuration { get; init; }
         private PluginUI PluginUi { get; init; }
+        private OofHelpers OofHelpers { get; init; }
 
         // i love global variables!!!! the more global the more globaly it gets
         // sound
         public bool isSoundPlaying { get; set; } = false;
        // private WaveStream? reader;
-       // private DirectSoundOut? soundOut;
-        private string soundFile { get; set; }
+        private DirectSoundOut? soundOut;
+        private string? soundFile{ get; set; }
 
         //check for fall
         private float prevPos { get; set; } = 0;
@@ -60,13 +56,13 @@ namespace OofPlugin
         private float distJump { get; set; } = 0;
         private bool wasJumping { get; set; } = false;
 
-        public class DeadPlayer
-        {
-            public uint PlayerId;
-            public bool DidPlayOof = false;
-            public float Distance = 0;
-        }
-        public List<DeadPlayer> DeadPlayers { get; set; } = new List<DeadPlayer>();
+        //public class DeadPlayer
+        //{
+        //    public uint PlayerId;
+        //    public bool DidPlayOof = false;
+        //    public float Distance = 0;
+        //}
+        //public List<DeadPlayer> DeadPlayers { get; set; } = new List<DeadPlayer>();
 
         public CancellationTokenSource CancelToken;
 
@@ -74,32 +70,33 @@ namespace OofPlugin
             [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
             [RequiredVersion("1.0")] CommandManager commandManager)
         {
-            this.PluginInterface = pluginInterface;
-            this.CommandManager = commandManager;
+            PluginInterface = pluginInterface;
+            CommandManager = commandManager;
+            Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
+            Configuration.Initialize(PluginInterface);
 
-            this.Configuration = this.PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
-            this.Configuration.Initialize(this.PluginInterface);
-            this.PluginUi = new PluginUI(this.Configuration, this);
+            PluginUi = new PluginUI(Configuration, this);
+            OofHelpers = new OofHelpers();
 
             // load audio file. idk if this the best way
             LoadSoundFile();
 
-            this.CommandManager.AddHandler(oofCommand, new CommandInfo(OnCommand)
+            CommandManager.AddHandler(oofCommand, new CommandInfo(OnCommand)
             {
                 HelpMessage = "play oof sound"
             });
-            this.CommandManager.AddHandler(oofSettings, new CommandInfo(OnCommand)
+            CommandManager.AddHandler(oofSettings, new CommandInfo(OnCommand)
             {
                 HelpMessage = "change oof settings"
             });
-            this.CommandManager.AddHandler(oofVideo, new CommandInfo(OnCommand)
+            CommandManager.AddHandler(oofVideo, new CommandInfo(OnCommand)
             {
                 HelpMessage = "open Hbomberguy video on OOF.mp3"
             });
 
-            this.PluginInterface.UiBuilder.Draw += DrawUI;
-            this.PluginInterface.UiBuilder.OpenConfigUi += DrawConfigUI;
-            Framework.Update += this.FrameworkOnUpdate;
+            PluginInterface.UiBuilder.Draw += DrawUI;
+            PluginInterface.UiBuilder.OpenConfigUi += DrawConfigUI;
+            Framework.Update += FrameworkOnUpdate;
 
             // lmao
             CancelToken = new CancellationTokenSource();
@@ -111,28 +108,27 @@ namespace OofPlugin
             if (Configuration.DefaultSoundImportPath.Length == 0)
             {
                 var path = Path.Combine(PluginInterface.AssemblyLocation.Directory?.FullName!, "oof.wav");
-                this.soundFile = path;
-
+                soundFile = path;
                 return;
             }
-            this.soundFile = Configuration.DefaultSoundImportPath;
+            soundFile = Configuration.DefaultSoundImportPath;
         }
         private void OnCommand(string command, string args)
         {
-            if (command == oofCommand) PlaySound();
-            if (command == oofSettings) this.PluginUi.SettingsVisible = true;
+            if (command == oofCommand) PlaySound(CancelToken.Token);
+            if (command == oofSettings) PluginUi.SettingsVisible = true;
             if (command == oofVideo) OpenVideo();
 
          }
 
         private void DrawUI()
         {
-            this.PluginUi.Draw();
+            PluginUi.Draw();
         }
 
         private void DrawConfigUI()
         {
-            this.PluginUi.SettingsVisible = true;
+            PluginUi.SettingsVisible = true;
         }
         private void FrameworkOnUpdate(Framework framework)
         {
@@ -167,7 +163,7 @@ namespace OofPlugin
                             if (allianceMemberAddress == IntPtr.Zero) throw new NullReferenceException("allience member address is null");
                               
                             var allianceMember = PartyList.CreateAllianceMemberReference(allianceMemberAddress) ?? throw new NullReferenceException("allience reference is null");
-                            AddRemoveDeadPlayer(allianceMember);
+                            OofHelpers.AddRemoveDeadPlayer(allianceMember);
                         }
                     }
                     catch (Exception e)
@@ -179,13 +175,13 @@ namespace OofPlugin
                 {
                     foreach (var member in PartyList)
                     {
-                        AddRemoveDeadPlayer(member,member.Territory.Id == ClientState!.TerritoryType);
+                        OofHelpers.AddRemoveDeadPlayer(member,member.Territory.Id == ClientState!.TerritoryType);
                     }
                 }
                
             } else
             {
-                AddRemoveDeadPlayer(ClientState!.LocalPlayer! );
+                OofHelpers.AddRemoveDeadPlayer(ClientState!.LocalPlayer!);
             }
           
         }
@@ -193,41 +189,40 @@ namespace OofPlugin
         /// <summary>
         /// Handle Player death, and add distance if true
         /// </summary>
-        /// <param name="character">character objectId</param>
-        /// <param name="currentHp">character's current hp</param>
+        /// <param name="character">character </param>
         /// <param name="condition">extra condition</param>
-        private void AddRemoveDeadPlayer(PlayerCharacter character, bool condition = true)
-        {
+        //private void AddRemoveDeadPlayer(PlayerCharacter character, bool condition = true)
+        //{
 
-            if (character == null) return;
-            if (character.CurrentHp == 0 && !DeadPlayers.Any(x => x.PlayerId == character.ObjectId) && condition)
-            {
-                DeadPlayers.Add(new DeadPlayer { PlayerId = character.ObjectId });
-            }
-            else if (character.CurrentHp != 0 && DeadPlayers.Any(x => x.PlayerId == character.ObjectId))
-            {
-                DeadPlayers.RemoveAll(x => x.PlayerId == character.ObjectId);
-            }
-        }
-        private void AddRemoveDeadPlayer(PartyMember character, bool condition = true)
-        {
-            if (character == null) return;
-            float distance = 0;
-            if (true)
-            {
-                var localPlayerPos = ClientState!.LocalPlayer!.Position;
-                distance = Vector3.Distance(localPlayerPos, character.Position);
-            }
+        //    if (character == null) return;
+        //    if (character.CurrentHp == 0 && !DeadPlayers.Any(x => x.PlayerId == character.ObjectId) && condition)
+        //    {
+        //        DeadPlayers.Add(new DeadPlayer { PlayerId = character.ObjectId });
+        //    }
+        //    else if (character.CurrentHp != 0 && DeadPlayers.Any(x => x.PlayerId == character.ObjectId))
+        //    {
+        //        DeadPlayers.RemoveAll(x => x.PlayerId == character.ObjectId);
+        //    }
+        //}
+        //private void AddRemoveDeadPlayer(PartyMember character, bool condition = true)
+        //{
+        //    if (character == null) return;
+        //    float distance = 0;
+        //    if (true)
+        //    {
+        //        var localPlayerPos = ClientState!.LocalPlayer!.Position;
+        //        distance = Vector3.Distance(localPlayerPos, character.Position);
+        //    }
 
-            if (character.CurrentHP == 0 && !DeadPlayers.Any(x => x.PlayerId == character.ObjectId) && condition)
-            {
-                DeadPlayers.Add(new DeadPlayer { PlayerId = character.ObjectId,Distance = distance });
-            }
-            else if (character.CurrentHP != 0 && DeadPlayers.Any(x => x.PlayerId == character.ObjectId))
-            {
-                DeadPlayers.RemoveAll(x => x.PlayerId == character.ObjectId);
-            }
-        }
+        //    if (character.CurrentHP == 0 && !DeadPlayers.Any(x => x.PlayerId == character.ObjectId) && condition)
+        //    {
+        //        DeadPlayers.Add(new DeadPlayer { PlayerId = character.ObjectId,Distance = distance });
+        //    }
+        //    else if (character.CurrentHP != 0 && DeadPlayers.Any(x => x.PlayerId == character.ObjectId))
+        //    {
+        //        DeadPlayers.RemoveAll(x => x.PlayerId == character.ObjectId);
+        //    }
+        //}
         /// <summary>
         /// check if player has taken fall damage (brute force way)
         /// </summary>
@@ -247,7 +242,7 @@ namespace OofPlugin
             }
             else if (wasJumping && !isJumping)  // stopped falling
             {
-                if (distJump - pos > 9.60) Task.Run(() => PlaySound()); // fell enough to take damage // i guessed and checked this distance value btw
+                if (distJump - pos > 9.60) PlaySound(CancelToken.Token); // fell enough to take damage // i guessed and checked this distance value btw
             }
 
             // set position for next timestep
@@ -260,27 +255,21 @@ namespace OofPlugin
         /// Play sound but without referencing windows.forms.
         /// much of the code from: https://github.com/kalilistic/Tippy/blob/5c18d6b21461b0bbe4583a86787ef4a3565e5ce6/src/Tippy/Tippy/Logic/TippyController.cs#L11
         /// </summary>
+        /// <param name="token">cancellation token</param>
         /// <param name="volume">optional volume param</param>
-        public void PlaySound(float volume = 1)
+        public void PlaySound(CancellationToken token ,float volume = 1)
         {
-                ///if (this.isSoundPlaying) this.soundOut!.Stop();
-                var soundDevice = DirectSoundOut.Devices.FirstOrDefault();
-                if (soundDevice == null)
-                {
-                    PluginLog.Error("no sound device lmao");
-                    return;
-                }
-
-                this.isSoundPlaying = true;
-                //this.reader = new WaveFileReader();
+            Task.Run(() =>
+            {
+                isSoundPlaying = true;
                 WaveStream reader;
                 try
                 {
-                    reader = new MediaFoundationReader(this.soundFile);
+                    reader = new MediaFoundationReader(soundFile);
                 }
                 catch (Exception ex)
                 {
-                    this.isSoundPlaying = false;
+                    isSoundPlaying = false;
                     PluginLog.Error("Failed read file", ex);
                     return;
                 }
@@ -292,43 +281,44 @@ namespace OofPlugin
                 };
                 using (reader)
                 {
+                    if (isSoundPlaying && soundOut != null)
+                    {
+                        soundOut.Pause();
+                        soundOut.Dispose();
+                    };
                     //shoutout anna clemens for the winforms fix
-                    using var output = new DirectSoundOut();
+                    soundOut = new DirectSoundOut();
 
                     try
                     {
-                        output.Init(audioStream);
-                        output.Play();
-                        output.PlaybackStopped += OnPlaybackStopped;
+                        soundOut.Init(audioStream);
+                        soundOut.Play();
+                        soundOut.PlaybackStopped += OnPlaybackStopped;
+                        // run after sound has played. does this work? i have no idea
                         void OnPlaybackStopped(object? sender, StoppedEventArgs e)
                         {
-                            output.PlaybackStopped -= OnPlaybackStopped;
-                            this.isSoundPlaying = false;
+                            soundOut.PlaybackStopped -= OnPlaybackStopped;
+                            isSoundPlaying = false;
                         }
                     }
                     catch (Exception ex)
                     {
-                        this.isSoundPlaying = false;
+                        isSoundPlaying = false;
                         PluginLog.Error("Failed play sound", ex);
                         return;
                     }
                 }
 
-
-           
+            }, token );
         }
 
-        /// <summary>
-        /// run after sound has played.
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
+       
        
 
         /// <summary>
         /// open the hbomberguy video on oof
         /// </summary>
-        public void OpenVideo()
+        public static void OpenVideo()
         {
             Util.OpenLink("https://www.youtube.com/watch?v=0twDETh6QaI");
         }
@@ -337,29 +327,23 @@ namespace OofPlugin
         /// check deadPlayers every once in a while. prevents multiple oof from playing too fast
         /// </summary>
         /// <param name="token"> cancellation token</param>
-        private void OofAudioPolling(CancellationToken token)
+        private async Task OofAudioPolling(CancellationToken token)
         {
             while (true)
             {
+                await Task.Delay(200, token);
                 if (token.IsCancellationRequested) break;
-                Task.Delay(200).Wait();
-                if (!DeadPlayers.Any()) continue;
+                if (!OofHelpers.DeadPlayers.Any()) continue;
            
-                foreach (var player in DeadPlayers)
+                foreach (var player in OofHelpers.DeadPlayers)
                 {
-                    if (!player.DidPlayOof)
-                    {
-
-
-
-                        PlaySound();
-                        player.DidPlayOof = true;
-                        break;
-                    }
-
+                    if (player.DidPlayOof) continue;
+                    
+                    PlaySound(token);
+                    player.DidPlayOof = true;
+                    break;
+                    
                 }
-
-                
             }
         }
 
@@ -369,27 +353,28 @@ namespace OofPlugin
         /// </summary>
         public void Dispose()
         {
-            this.PluginUi.Dispose();
-            this.CommandManager.RemoveHandler(oofCommand);
-            this.CommandManager.RemoveHandler(oofSettings);
-            this.CommandManager.RemoveHandler(oofVideo);
+            PluginUi.Dispose();
+            CommandManager.RemoveHandler(oofCommand);
+            CommandManager.RemoveHandler(oofSettings);
+            CommandManager.RemoveHandler(oofVideo);
             CancelToken.Cancel();
             CancelToken.Dispose();
 
-            Framework.Update -= this.FrameworkOnUpdate;
+            Framework.Update -= FrameworkOnUpdate;
             try
             {
-                while (this.isSoundPlaying)
+                while (isSoundPlaying)
                 {
                     Thread.Sleep(100);
-                }
-                this.isSoundPlaying = false ;
+                    soundOut?.Pause();
+                    isSoundPlaying = false;
 
-               
+                }
+                soundOut?.Dispose();
             }
             catch (Exception e)
             {
-                PluginLog.LogError("Failed to dispose oofplugin controller", e);
+                PluginLog.LogError("Failed to dispose oofplugin controller", e.Message);
             }
 
 
