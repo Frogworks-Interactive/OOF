@@ -1,22 +1,19 @@
 ﻿using Dalamud.Game;
 using Dalamud.Game.ClientState;
-using Dalamud.Game.ClientState.Party;
-using Dalamud.Game.ClientState.Objects;
 using Dalamud.Game.ClientState.Conditions;
+using Dalamud.Game.ClientState.Objects;
+using Dalamud.Game.ClientState.Party;
 using Dalamud.Game.Command;
 using Dalamud.IoC;
 using Dalamud.Logging;
 using Dalamud.Plugin;
+using Dalamud.Utility;
 using NAudio.Wave;
 using System;
 using System.IO;
 using System.Linq;
 using System.Threading;
-using System.Collections.Generic;
 using System.Threading.Tasks;
-using System.Numerics;
-using Dalamud.Utility;
-using Dalamud.Game.ClientState.Objects.SubKinds;
 
 
 //shoutout anna clemens
@@ -46,9 +43,9 @@ namespace OofPlugin
         // i love global variables!!!! the more global the more globaly it gets
         // sound
         public bool isSoundPlaying { get; set; } = false;
-       // private WaveStream? reader;
+        // private WaveStream? reader;
         private DirectSoundOut? soundOut;
-        private string? soundFile{ get; set; }
+        private string? soundFile { get; set; }
 
         //check for fall
         private float prevPos { get; set; } = 0;
@@ -119,7 +116,7 @@ namespace OofPlugin
             if (command == oofSettings) PluginUi.SettingsVisible = true;
             if (command == oofVideo) OpenVideo();
 
-         }
+        }
 
         private void DrawUI()
         {
@@ -144,7 +141,7 @@ namespace OofPlugin
                 PluginLog.Error("failed to check for oof condition:", e.Message);
             }
         }
-      
+
         /// <summary>
         /// check if player has died during alliance, party, and self.
         /// this may be the worst if statement chain i have made
@@ -153,7 +150,7 @@ namespace OofPlugin
         {
             if (PartyList != null && PartyList.Any())
             {
-                if(Configuration.OofOthersInAlliance && PartyList.Length == 8 && PartyList.GetAllianceMemberAddress(0) != IntPtr.Zero) // the worst "is alliance" check
+                if (Configuration.OofOthersInAlliance && PartyList.Length == 8 && PartyList.GetAllianceMemberAddress(0) != IntPtr.Zero) // the worst "is alliance" check
                 {
                     try
                     {
@@ -161,7 +158,7 @@ namespace OofPlugin
                         {
                             var allianceMemberAddress = PartyList.GetAllianceMemberAddress(i);
                             if (allianceMemberAddress == IntPtr.Zero) throw new NullReferenceException("allience member address is null");
-                              
+
                             var allianceMember = PartyList.CreateAllianceMemberReference(allianceMemberAddress) ?? throw new NullReferenceException("allience reference is null");
                             OofHelpers.AddRemoveDeadPlayer(allianceMember);
                         }
@@ -175,15 +172,16 @@ namespace OofPlugin
                 {
                     foreach (var member in PartyList)
                     {
-                        OofHelpers.AddRemoveDeadPlayer(member,member.Territory.Id == ClientState!.TerritoryType);
+                        OofHelpers.AddRemoveDeadPlayer(member, member.Territory.Id == ClientState!.TerritoryType);
                     }
                 }
-               
-            } else
+
+            }
+            else
             {
                 OofHelpers.AddRemoveDeadPlayer(ClientState!.LocalPlayer!);
             }
-          
+
         }
 
         /// <summary>
@@ -229,7 +227,7 @@ namespace OofPlugin
         private void CheckFallen()
         {
             // dont run btwn moving areas
-            if ( Condition[ConditionFlag.InCombat] || Condition[ConditionFlag.BetweenAreas]) return;
+            if (Condition[ConditionFlag.InCombat] || Condition[ConditionFlag.BetweenAreas]) return;
             if (!Configuration.OofWhileMounted && (Condition[ConditionFlag.Mounted] || Condition[ConditionFlag.Mounted2])) return;
 
             var isJumping = Condition[ConditionFlag.Jumping];
@@ -257,7 +255,7 @@ namespace OofPlugin
         /// </summary>
         /// <param name="token">cancellation token</param>
         /// <param name="volume">optional volume param</param>
-        public void PlaySound(CancellationToken token ,float volume = 1)
+        public void PlaySound(CancellationToken token, float volume = 1)
         {
             Task.Run(() =>
             {
@@ -309,11 +307,11 @@ namespace OofPlugin
                     }
                 }
 
-            }, token );
+            }, token);
         }
 
-       
-       
+
+
 
         /// <summary>
         /// open the hbomberguy video on oof
@@ -334,15 +332,15 @@ namespace OofPlugin
                 await Task.Delay(200, token);
                 if (token.IsCancellationRequested) break;
                 if (!OofHelpers.DeadPlayers.Any()) continue;
-           
+
                 foreach (var player in OofHelpers.DeadPlayers)
                 {
                     if (player.DidPlayOof) continue;
-                    
+
                     PlaySound(token);
                     player.DidPlayOof = true;
                     break;
-                    
+
                 }
             }
         }

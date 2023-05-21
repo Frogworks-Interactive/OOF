@@ -1,11 +1,7 @@
 ﻿using Dalamud.Game.ClientState.Objects.SubKinds;
-using Dalamud.Game.ClientState;
-using System;
+using Dalamud.Game.ClientState.Party;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Dalamud.Game.ClientState.Party;
 using System.Numerics;
 
 namespace OofPlugin
@@ -25,7 +21,7 @@ namespace OofPlugin
         /// </summary>
         /// <param name="character">character </param>
         /// <param name="condition">extra condition</param>
-        private void AddRemoveDeadPlayer(DeadPlayer deadPlayer, uint currentHp,uint objectId, bool condition = true)
+        private void AddRemoveDeadPlayer(DeadPlayer deadPlayer, uint currentHp, uint objectId, bool condition = true)
         {
             if (currentHp == 0 && !DeadPlayers.Any(x => x.PlayerId == objectId) && condition)
             {
@@ -44,7 +40,7 @@ namespace OofPlugin
         {
             if (character == null) return;
             var deadPlayer = new DeadPlayer { PlayerId = character.ObjectId };
-            AddRemoveDeadPlayer(deadPlayer,character.CurrentHp, character.ObjectId);
+            AddRemoveDeadPlayer(deadPlayer, character.CurrentHp, character.ObjectId);
         }
         /// <summary>
         /// add remove player for Party/alliance members
@@ -53,9 +49,9 @@ namespace OofPlugin
         /// <param name="condition"></param>
         public void AddRemoveDeadPlayer(PartyMember character, bool condition = true)
         {
-            if (character == null) return;   
+            if (character == null) return;
             var deadPlayer = new DeadPlayer { PlayerId = character.ObjectId, Distance = character.Position };
-            AddRemoveDeadPlayer(deadPlayer,character.CurrentHP, character.ObjectId, condition);
+            AddRemoveDeadPlayer(deadPlayer, character.CurrentHP, character.ObjectId, condition);
         }
 
 

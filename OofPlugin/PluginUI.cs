@@ -1,11 +1,11 @@
-﻿using ImGuiNET;
-using System;
-using System.Numerics;
-using Dalamud.Interface.ImGuiFileDialog;
-using Dalamud.Interface;
-using System.Text.RegularExpressions;
+﻿using Dalamud.Interface;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Components;
+using Dalamud.Interface.ImGuiFileDialog;
+using ImGuiNET;
+using System;
+using System.Numerics;
+using System.Text.RegularExpressions;
 
 namespace OofPlugin
 {
@@ -14,15 +14,12 @@ namespace OofPlugin
         private Configuration configuration;
         private Plugin plugin;
         private FileDialogManager manager { get; }
-
         private bool settingsVisible = false;
-       
         public bool SettingsVisible
         {
             get { return settingsVisible; }
             set { settingsVisible = value; }
         }
-
         public PluginUI(Configuration configuration, Plugin plugin)
         {
             this.configuration = configuration;
@@ -33,15 +30,10 @@ namespace OofPlugin
             };
         }
 
-        public void Dispose()
-        {
-        }
-
         public void Draw()
         {
             DrawSettingsWindow();
         }
-
         public void DrawSettingsWindow()
         {
             if (!SettingsVisible) return;
@@ -55,7 +47,7 @@ namespace OofPlugin
 
 
                 ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X * ImGuiHelpers.GlobalScale);
-                
+
                 if (ImGui.SliderFloat("###volume", ref oofVolume, 0.0f, 1.0f))
                 {
                     configuration.Volume = oofVolume;
@@ -64,7 +56,7 @@ namespace OofPlugin
                 ImGui.Separator();
                 ImGuiHelpers.SafeTextColoredWrapped(ImGuiColors.DalamudGrey, "Play Oof On");
                 ImGuiComponents.HelpMarker(
-                  "turn on/off various conditions to play the sound on");
+                  "turn on/off various conditions to play the sound");
                 ImGui.Columns(2);
 
                 void CheckboxHelper(string title, bool config)
@@ -126,54 +118,7 @@ namespace OofPlugin
                 ImGui.Columns(1);
 
                 ImGui.Separator();
-                ImGuiHelpers.SafeTextColoredWrapped(ImGuiColors.DalamudGrey, "Loaded SoundFile");
-                ImGuiComponents.HelpMarker(
-                   "Use a custom audio file from computer. ");
-                if (ImGuiComponents.IconButton(FontAwesomeIcon.PlayCircle)) plugin.PlaySound(plugin.CancelToken.Token);
-                if (ImGui.IsItemHovered())
-                    ImGui.SetTooltip("Play");
-
-                ImGui.SameLine();
-
-
-                if (configuration.DefaultSoundImportPath.Length > 0)
-                {
-                    var formatString = getFileName().Match(configuration.DefaultSoundImportPath);
-                    if (formatString.Success)
-                    {
-                        ImGui.TextUnformatted(formatString.Value);
-                    }
-                }
-                else
-                {
-                    ImGui.TextUnformatted("Original Oof.wav");
-                }
-
-                if (ImGui.Button("Browse sound file"))
-                {
-                    void UpdatePath(bool success, string path)
-                    {
-                        if (!success || path.Length == 0)
-                        {
-                        return;
-                        }
-                        configuration.DefaultSoundImportPath = path;
-                        configuration.Save();
-                        plugin.LoadSoundFile();
-                }
-
-                    manager.OpenFileDialog("Open Audio File...", "Audio{.wav,.mp3,.aac,.wma}", UpdatePath);
-                    }
-                    ImGui.SameLine();
-                if (ImGuiComponents.IconButton(FontAwesomeIcon.UndoAlt))
-                {
-                    configuration.DefaultSoundImportPath = string.Empty;
-                    configuration.Save();
-                    plugin.LoadSoundFile();
-
-                }
-                if (ImGui.IsItemHovered())
-                    ImGui.SetTooltip("Reset");
+                LoadAudioUI();
                 ImGui.Separator();
                 ImGui.TextWrapped("Learn about the history behind the Roblox Oof with Hbomberguy's Documentary:");
 
@@ -189,6 +134,56 @@ namespace OofPlugin
             }
 
             ImGui.End();
+        }
+
+        private void LoadAudioUI()
+        {
+            ImGuiHelpers.SafeTextColoredWrapped(ImGuiColors.DalamudGrey, "Loaded SoundFile");
+            ImGuiComponents.HelpMarker(
+               "Use a custom audio file from computer. ");
+            if (ImGuiComponents.IconButton(FontAwesomeIcon.PlayCircle)) plugin.PlaySound(plugin.CancelToken.Token);
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Play");
+
+            ImGui.SameLine();
+
+            if (configuration.DefaultSoundImportPath.Length > 0)
+            {
+                var formatString = getFileName().Match(configuration.DefaultSoundImportPath);
+                if (formatString.Success)
+                {
+                    ImGui.TextUnformatted(formatString.Value);
+                }
+            }
+            else
+            {
+                ImGui.TextUnformatted("Original Oof.wav");
+            }
+
+            if (ImGui.Button("Browse sound file"))
+            {
+                void UpdatePath(bool success, string path)
+                {
+                    if (!success || path.Length == 0)
+                    {
+                        return;
+                    }
+                    configuration.DefaultSoundImportPath = path;
+                    configuration.Save();
+                    plugin.LoadSoundFile();
+                }
+
+                manager.OpenFileDialog("Open Audio File...", "Audio{.wav,.mp3,.aac,.wma}", UpdatePath);
+            }
+            ImGui.SameLine();
+            if (ImGuiComponents.IconButton(FontAwesomeIcon.UndoAlt))
+            {
+                configuration.DefaultSoundImportPath = string.Empty;
+                configuration.Save();
+                plugin.LoadSoundFile();
+
+            }
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("Reset");
         }
         // Set up the file selector with the right flags and custom side bar items.
         public static FileDialogManager SetupFileManager()
@@ -211,5 +206,9 @@ namespace OofPlugin
         /// <returns></returns>
         [GeneratedRegex("[^\\\\]+$")]
         private static partial Regex getFileName();
+        public void Dispose()
+        {
+        }
     }
+
 }
