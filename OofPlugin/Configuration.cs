@@ -8,18 +8,13 @@ namespace OofPlugin
     public class Configuration : IPluginConfiguration
     {
         public int Version { get; set; } = 0;
-
         public bool OofOnFall { get; set; } = true;
         public bool OofOnDeath { get; set; } = true;
-
-        public bool OofOthersInParty { get; set; } = true;
-
-        public bool OofOthersInAlliance { get; set; } = true;
-
-
-        public float Volume { get; set; } = 0.5f;
         public bool OofInBattle { get; set; } = true;
-
+        public bool OofWhileMounted { get; set; } = true;
+        public bool OofOthersInParty { get; set; } = true;
+        public bool OofOthersInAlliance { get; set; } = true;
+        public float Volume { get; set; } = 0.5f;
         public string DefaultSoundImportPath { get; set; } = string.Empty;
 
         // the below exist just to make saving less cumbersome

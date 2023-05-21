@@ -19,6 +19,10 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Diagnostics;
 using System.Numerics;
+using Dalamud.Utility;
+using Dalamud.Game.ClientState.Objects.SubKinds;
+using Dalamud.Game.ClientState.Objects.Types;
+using static Lumina.Data.Parsing.Layer.LayerCommon;
 
 //shoutout anna clemens
 
@@ -46,17 +50,23 @@ namespace OofPlugin
         // i love global variables!!!! the more global the more globaly it gets
         // sound
         public bool isSoundPlaying { get; set; } = false;
-        private WaveFileReader? reader;
-        private DirectSoundOut? soundOut;
-        private byte[] soundFile { get; set; }
+       // private WaveStream? reader;
+       // private DirectSoundOut? soundOut;
+        private string soundFile { get; set; }
 
         //check for fall
-        public float prevPos { get; set; } = 0;
+        private float prevPos { get; set; } = 0;
         private float prevVel { get; set; } = 0;
-        public float distJump { get; set; } = 0;
-        public bool wasJumping { get; set; } = false;
-        public bool test { get; set; } = false;
-        public Dictionary<uint,bool> deadPlayers { get; set; } = new Dictionary<uint, bool> { };
+        private float distJump { get; set; } = 0;
+        private bool wasJumping { get; set; } = false;
+
+        public class DeadPlayer
+        {
+            public uint PlayerId;
+            public bool DidPlayOof = false;
+            public float Distance = 0;
+        }
+        public List<DeadPlayer> DeadPlayers { get; set; } = new List<DeadPlayer>();
 
         public CancellationTokenSource CancelToken;
 
@@ -72,7 +82,7 @@ namespace OofPlugin
             this.PluginUi = new PluginUI(this.Configuration, this);
 
             // load audio file. idk if this the best way
-            loadSoundFile();
+            LoadSoundFile();
 
             this.CommandManager.AddHandler(oofCommand, new CommandInfo(OnCommand)
             {
@@ -93,25 +103,25 @@ namespace OofPlugin
 
             // lmao
             CancelToken = new CancellationTokenSource();
-            Task.Run(() => oofAudioPolling(CancelToken.Token));
+            Task.Run(() => OofAudioPolling(CancelToken.Token));
 
         }
-        public void loadSoundFile()
+        public void LoadSoundFile()
         {
             if (Configuration.DefaultSoundImportPath.Length == 0)
             {
                 var path = Path.Combine(PluginInterface.AssemblyLocation.Directory?.FullName!, "oof.wav");
-                this.soundFile = File.ReadAllBytes(path);
+                this.soundFile = path;
 
                 return;
             }
-            this.soundFile = File.ReadAllBytes(Configuration.DefaultSoundImportPath);
+            this.soundFile = Configuration.DefaultSoundImportPath;
         }
         private void OnCommand(string command, string args)
         {
             if (command == oofCommand) PlaySound();
             if (command == oofSettings) this.PluginUi.SettingsVisible = true;
-            if (command == oofVideo) openVideo();
+            if (command == oofVideo) OpenVideo();
 
          }
 
@@ -135,16 +145,17 @@ namespace OofPlugin
             }
             catch (Exception e)
             {
-                PluginLog.Error("failed to check for oof condition:", e);
+                PluginLog.Error("failed to check for oof condition:", e.Message);
             }
         }
       
         /// <summary>
-        /// check if player has died
+        /// check if player has died during alliance, party, and self.
+        /// this may be the worst if statement chain i have made
         /// </summary>
         private void CheckDeath()
         {
-            if (Configuration.OofInBattle  && PartyList != null && PartyList.Any())
+            if (PartyList != null && PartyList.Any())
             {
                 if(Configuration.OofOthersInAlliance && PartyList.Length == 8 && PartyList.GetAllianceMemberAddress(0) != IntPtr.Zero) // the worst "is alliance" check
                 {
@@ -153,64 +164,79 @@ namespace OofPlugin
                         for (int i = 0; i < 16; i++)
                         {
                             var allianceMemberAddress = PartyList.GetAllianceMemberAddress(i);
-
-                            if (allianceMemberAddress != IntPtr.Zero)
-                            {
-                                var allianceMember = PartyList.CreateAllianceMemberReference(allianceMemberAddress);
-                                if (allianceMember.CurrentHP == 0 && !deadPlayers.ContainsKey(allianceMember.ObjectId))
-                                {
-                                    deadPlayers[allianceMember.ObjectId] = true;
-                                }
-                                else if (allianceMember.CurrentHP != 0 && deadPlayers.ContainsKey(allianceMember.ObjectId))
-                                {
-                                    deadPlayers.Remove(allianceMember.ObjectId);
-                                }
-
-                            }
-
+                            if (allianceMemberAddress == IntPtr.Zero) throw new NullReferenceException("allience member address is null");
+                              
+                            var allianceMember = PartyList.CreateAllianceMemberReference(allianceMemberAddress) ?? throw new NullReferenceException("allience reference is null");
+                            AddRemoveDeadPlayer(allianceMember);
                         }
                     }
                     catch (Exception e)
                     {
-                        PluginLog.LogError("failed at alliance", e.Message);
+                        PluginLog.LogError("failed alliance check", e.Message);
                     }
                 }
                 if (Configuration.OofOthersInParty)
                 {
                     foreach (var member in PartyList)
                     {
-                        if (member.CurrentHP == 0 && !deadPlayers.ContainsKey(member.ObjectId) && member.Territory.Id == ClientState!.TerritoryType)
-                        {
-                            deadPlayers[member.ObjectId] = true;
-                        }
-                        else if (member.CurrentHP != 0 && deadPlayers.ContainsKey(member.ObjectId))
-                        {
-                            deadPlayers.Remove(member.ObjectId);
-                        }
+                        AddRemoveDeadPlayer(member,member.Territory.Id == ClientState!.TerritoryType);
                     }
                 }
                
             } else
             {
-                if (ClientState!.LocalPlayer!.CurrentHp == 0 && !deadPlayers.ContainsKey(ClientState!.LocalPlayer!.ObjectId))
-                {
-                    deadPlayers[ClientState!.LocalPlayer!.ObjectId] = true;
-                }
-                else if (ClientState!.LocalPlayer!.CurrentHp != 0 && deadPlayers.ContainsKey(ClientState!.LocalPlayer!.ObjectId))
-                {
-                    deadPlayers.Remove(ClientState!.LocalPlayer!.ObjectId);
-                }
+                AddRemoveDeadPlayer(ClientState!.LocalPlayer! );
             }
           
+        }
+
+        /// <summary>
+        /// Handle Player death, and add distance if true
+        /// </summary>
+        /// <param name="character">character objectId</param>
+        /// <param name="currentHp">character's current hp</param>
+        /// <param name="condition">extra condition</param>
+        private void AddRemoveDeadPlayer(PlayerCharacter character, bool condition = true)
+        {
+
+            if (character == null) return;
+            if (character.CurrentHp == 0 && !DeadPlayers.Any(x => x.PlayerId == character.ObjectId) && condition)
+            {
+                DeadPlayers.Add(new DeadPlayer { PlayerId = character.ObjectId });
+            }
+            else if (character.CurrentHp != 0 && DeadPlayers.Any(x => x.PlayerId == character.ObjectId))
+            {
+                DeadPlayers.RemoveAll(x => x.PlayerId == character.ObjectId);
+            }
+        }
+        private void AddRemoveDeadPlayer(PartyMember character, bool condition = true)
+        {
+            if (character == null) return;
+            float distance = 0;
+            if (true)
+            {
+                var localPlayerPos = ClientState!.LocalPlayer!.Position;
+                distance = Vector3.Distance(localPlayerPos, character.Position);
+            }
+
+            if (character.CurrentHP == 0 && !DeadPlayers.Any(x => x.PlayerId == character.ObjectId) && condition)
+            {
+                DeadPlayers.Add(new DeadPlayer { PlayerId = character.ObjectId,Distance = distance });
+            }
+            else if (character.CurrentHP != 0 && DeadPlayers.Any(x => x.PlayerId == character.ObjectId))
+            {
+                DeadPlayers.RemoveAll(x => x.PlayerId == character.ObjectId);
+            }
         }
         /// <summary>
         /// check if player has taken fall damage (brute force way)
         /// </summary>
         private void CheckFallen()
-        {   
-            // dont run if mounted
-            if (Condition[ConditionFlag.Mounted] || Condition[ConditionFlag.Mounted2] || Condition[ConditionFlag.InCombat]) return;
-           
+        {
+            // dont run btwn moving areas
+            if ( Condition[ConditionFlag.InCombat] || Condition[ConditionFlag.BetweenAreas]) return;
+            if (!Configuration.OofWhileMounted && (Condition[ConditionFlag.Mounted] || Condition[ConditionFlag.Mounted2])) return;
+
             var isJumping = Condition[ConditionFlag.Jumping];
             var pos = ClientState!.LocalPlayer!.Position.Y;
             var velocity = prevPos - pos;
@@ -221,7 +247,7 @@ namespace OofPlugin
             }
             else if (wasJumping && !isJumping)  // stopped falling
             {
-                if (distJump - pos > 9.60) PlaySound(); // fell enough to take damage // i guessed and checked this distance value btw
+                if (distJump - pos > 9.60) Task.Run(() => PlaySound()); // fell enough to take damage // i guessed and checked this distance value btw
             }
 
             // set position for next timestep
@@ -232,15 +258,12 @@ namespace OofPlugin
 
         /// <summary>
         /// Play sound but without referencing windows.forms.
-        /// i hope this doesnt leak memory
+        /// much of the code from: https://github.com/kalilistic/Tippy/blob/5c18d6b21461b0bbe4583a86787ef4a3565e5ce6/src/Tippy/Tippy/Logic/TippyController.cs#L11
         /// </summary>
         /// <param name="volume">optional volume param</param>
         public void PlaySound(float volume = 1)
         {
-            try
-            {
-                if (this.isSoundPlaying) this.soundOut!.Stop();
-              
+                ///if (this.isSoundPlaying) this.soundOut!.Stop();
                 var soundDevice = DirectSoundOut.Devices.FirstOrDefault();
                 if (soundDevice == null)
                 {
@@ -249,23 +272,50 @@ namespace OofPlugin
                 }
 
                 this.isSoundPlaying = true;
-                this.reader = new WaveFileReader(new MemoryStream(this.soundFile));
+                //this.reader = new WaveFileReader();
+                WaveStream reader;
+                try
+                {
+                    reader = new MediaFoundationReader(this.soundFile);
+                }
+                catch (Exception ex)
+                {
+                    this.isSoundPlaying = false;
+                    PluginLog.Error("Failed read file", ex);
+                    return;
+                }
 
-                var audioStream = new WaveChannel32(this.reader);
-                audioStream.Volume = Configuration.Volume * volume;
-                audioStream.PadWithZeroes = false; // you need this or else playbackstopped event will not fire
-                //shoutout anna clemens for the winforms fix
-                soundOut = new DirectSoundOut(soundDevice.Guid);
-                soundOut.Init(audioStream);
-                soundOut.Play();
-                soundOut.PlaybackStopped += onPlaybackStopped;
+                var audioStream = new WaveChannel32(reader)
+                {
+                    Volume = Configuration.Volume * volume,
+                    PadWithZeroes = false // you need this or else playbackstopped event will not fire
+                };
+                using (reader)
+                {
+                    //shoutout anna clemens for the winforms fix
+                    using var output = new DirectSoundOut();
 
-            }
-            catch (Exception e)
-            {
-                this.isSoundPlaying = false;
-                PluginLog.Error(e,"failed to play oof sound");
-            }
+                    try
+                    {
+                        output.Init(audioStream);
+                        output.Play();
+                        output.PlaybackStopped += OnPlaybackStopped;
+                        void OnPlaybackStopped(object? sender, StoppedEventArgs e)
+                        {
+                            output.PlaybackStopped -= OnPlaybackStopped;
+                            this.isSoundPlaying = false;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        this.isSoundPlaying = false;
+                        PluginLog.Error("Failed play sound", ex);
+                        return;
+                    }
+                }
+
+
+           
         }
 
         /// <summary>
@@ -273,58 +323,43 @@ namespace OofPlugin
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private void onPlaybackStopped(object? sender, StoppedEventArgs e)
-        {
-            this.soundOut!.PlaybackStopped -= this.onPlaybackStopped;
-            this.isSoundPlaying = false;
-        }
+       
 
         /// <summary>
         /// open the hbomberguy video on oof
         /// </summary>
-        public void openVideo()
+        public void OpenVideo()
         {
-            ProcessStartInfo openVideo = new ProcessStartInfo
-            {
-                FileName = "https://www.youtube.com/watch?v=0twDETh6QaI",
-                UseShellExecute = true
-            };
-            Process.Start(openVideo);
+            Util.OpenLink("https://www.youtube.com/watch?v=0twDETh6QaI");
         }
 
         /// <summary>
         /// check deadPlayers every once in a while. prevents multiple oof from playing too fast
         /// </summary>
         /// <param name="token"> cancellation token</param>
-        private void oofAudioPolling(CancellationToken token)
+        private void OofAudioPolling(CancellationToken token)
         {
             while (true)
             {
                 if (token.IsCancellationRequested) break;
                 Task.Delay(200).Wait();
-                if (deadPlayers.Any())
+                if (!DeadPlayers.Any()) continue;
+           
+                foreach (var player in DeadPlayers)
                 {
-                    foreach (var player in deadPlayers)
+                    if (!player.DidPlayOof)
                     {
-                        if (player.Value)
-                        {
-                    
-                            var playerObject = ObjectTable.SearchById(player.Key);
-                            if (playerObject != null)
-                            {
-                                var localPlayerPos = ClientState!.LocalPlayer!.Position;
-                               var distance = Vector3.Distance(localPlayerPos,playerObject.Position);
-                            }
-                            
 
-                            PlaySound();
-                            deadPlayers[player.Key] = false;
-                            break;
-                        }
 
+
+                        PlaySound();
+                        player.DidPlayOof = true;
+                        break;
                     }
 
                 }
+
+                
             }
         }
 
@@ -350,8 +385,7 @@ namespace OofPlugin
                 }
                 this.isSoundPlaying = false ;
 
-                this.reader!.Dispose();
-                this.soundOut!.Dispose();
+               
             }
             catch (Exception e)
             {

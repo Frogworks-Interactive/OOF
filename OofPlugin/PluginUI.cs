@@ -16,6 +16,8 @@ using Dalamud.Logging;
 using System.Threading;
 using System.IO;
 using System.Text.RegularExpressions;
+using Dalamud.Interface.Colors;
+using Dalamud.Interface.Components;
 
 namespace OofPlugin
 {
@@ -52,62 +54,71 @@ namespace OofPlugin
             DrawSettingsWindow();
         }
 
-        public void CheckMark()
-        {
-
-        }
         public void DrawSettingsWindow()
         {
             if (!SettingsVisible) return;
 
-            ImGui.SetNextWindowSize(new Vector2(400, 340), ImGuiCond.Always);
+            ImGui.SetNextWindowSize(new Vector2(380, 420), ImGuiCond.Once);
             if (ImGui.Begin("oof options", ref this.settingsVisible,
-                ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse))
+                 ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse))
             {
                 var oofVolume = this.configuration.Volume;
+                ImGuiHelpers.SafeTextColoredWrapped(ImGuiColors.DalamudGrey, "Volume");
 
-                if (ImGui.SliderFloat("Volume", ref oofVolume, 0.0f, 1.0f))
+
+                ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X * ImGuiHelpers.GlobalScale);
+
+                if (ImGui.SliderFloat("###volume", ref oofVolume, 0.0f, 1.0f))
                 {
                     this.configuration.Volume = oofVolume;
                     this.configuration.Save();
                 }
+                ImGui.Separator();
+                ImGuiHelpers.SafeTextColoredWrapped(ImGuiColors.DalamudGrey, "Play Oof On");
+                ImGuiComponents.HelpMarker(
+                  "turn on/off various conditions to play the sound on");
                 ImGui.Columns(2);
 
                 var oofOnDeath = this.configuration.OofOnDeath;
 
-                if (ImGui.Checkbox("Oof on death###play-oof-death", ref oofOnDeath))
+                if (ImGui.Checkbox("Death###play-oof-death", ref oofOnDeath))
                 {
                     this.configuration.OofOnDeath = oofOnDeath;
                     this.configuration.Save();
                 }
-                ImGui.NextColumn();
+              
                 var oofOnFall = this.configuration.OofOnFall;
 
-                if (ImGui.Checkbox("Oof on fall damage###play-oof-fall", ref oofOnFall))
+                if (ImGui.Checkbox("Fall damage###play-oof-fall", ref oofOnFall))
                 {
                     this.configuration.OofOnFall = oofOnFall;
                     this.configuration.Save();
                 }
-                ImGui.NextColumn();
                 var oofInBattle = this.configuration.OofInBattle;
 
-                if (ImGui.Checkbox("Oof during combat###play-oof-combat", ref oofInBattle))
+                if (ImGui.Checkbox("During combat###play-oof-combat", ref oofInBattle))
                 {
                     this.configuration.OofInBattle = oofInBattle;
+                    this.configuration.Save();
+                }
+                var oofWhileMounted = this.configuration.OofWhileMounted;
+
+                if (ImGui.Checkbox("While mounted###play-oof-mounted", ref oofWhileMounted))
+                {
+                    this.configuration.OofWhileMounted = oofWhileMounted;
                     this.configuration.Save();
                 }
                 ImGui.NextColumn();
                 var oofOthersInParty = this.configuration.OofOthersInParty;
 
-                if (ImGui.Checkbox("Oof on party member's death###play-oof-party", ref oofOthersInParty))
+                if (ImGui.Checkbox("Party member's death###play-oof-party", ref oofOthersInParty))
                 {
                     this.configuration.OofOthersInParty = oofOthersInParty;
                     this.configuration.Save();
                 }
-                ImGui.NextColumn();
                 var oofOthersInAlliance = this.configuration.OofOthersInAlliance;
 
-                if (ImGui.Checkbox("Oof on alliance member's death###play-oof-alliance", ref oofOthersInAlliance))
+                if (ImGui.Checkbox("Alliance member's death###play-oof-alliance", ref oofOthersInAlliance))
                 {
                     this.configuration.OofOthersInAlliance = oofOthersInAlliance;
                     this.configuration.Save();
@@ -115,8 +126,13 @@ namespace OofPlugin
                 ImGui.Columns(1);
 
                 ImGui.Separator();
-                ImGui.TextUnformatted("Loaded SoundFile:");
-                if (ImGui.Button("Play")) plugin.PlaySound();
+                ImGuiHelpers.SafeTextColoredWrapped(ImGuiColors.DalamudGrey, "Loaded SoundFile");
+                ImGuiComponents.HelpMarker(
+                   "Load a custom audio file from computer. Must be a WAV file (idk how to do mp3)");
+                if (ImGuiComponents.IconButton(FontAwesomeIcon.PlayCircle)) plugin.PlaySound();
+                if (ImGui.IsItemHovered())
+                    ImGui.SetTooltip("Play");
+
                 ImGui.SameLine();
 
 
@@ -143,30 +159,32 @@ namespace OofPlugin
                         }
                         this.configuration.DefaultSoundImportPath = path;
                         this.configuration.Save();
-                        plugin.loadSoundFile();
+                        plugin.LoadSoundFile();
                 }
 
-                    manager.OpenFileDialog("Open Image...", "Audio{.wav}", UpdatePath);
+                    manager.OpenFileDialog("Open Audio File...", "Audio{.wav}", UpdatePath);
                     }
                     ImGui.SameLine();
-                if (ImGui.Button("reset"))
+                if (ImGuiComponents.IconButton(FontAwesomeIcon.UndoAlt))
                 {
                     this.configuration.DefaultSoundImportPath = string.Empty;
                     this.configuration.Save();
-                    plugin.loadSoundFile();
+                    plugin.LoadSoundFile();
 
                 }
+                if (ImGui.IsItemHovered())
+                    ImGui.SetTooltip("Reset");
                 ImGui.Separator();
-                ImGui.TextWrapped("Learn about the history behind the Roblox Oof with Hbomberguy's Documentary.");
+                ImGui.TextWrapped("Learn about the history behind the Roblox Oof with Hbomberguy's Documentary:");
 
+                if (ImGui.Button("Watch on Youtube")) plugin.OpenVideo();
+                var desc = "Tip: Macro the /oofvideo command to add a shortcut for the video for easy and streamlined access.";
+                ImGuiHelpers.SafeTextColoredWrapped(ImGuiColors.DalamudGrey, desc);
+                ImGui.Separator();
+                ImGuiHelpers.SafeTextColoredWrapped(ImGuiColors.DalamudGrey, "Original Oof sound by Joey Kuras");
 
-                if (ImGui.Button("Watch on Youtube")) plugin.openVideo();
-
-                ImGui.TextWrapped("Original Oof sound by Joey Kuras");
 
                 this.manager.Draw();
-
-
 
             }
 
