@@ -9,7 +9,8 @@ Dalamud plugin that plays the oof sound when you take
 
 #### craaazzzy features!
  - use a custom sound file!
- - watch the hour long documentary on oof by hbomberguy!
+ - instant access to the hour long documentary on oof by hbomberguy!
+ - fully featured settings window!
 ### play oof sound:
 ```
 /oof
