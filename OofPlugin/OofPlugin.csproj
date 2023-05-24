@@ -32,6 +32,10 @@
 		    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		    <Visible>false</Visible>
 	    </Content>
+		<Content Include="..\Data\credits.png">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<Visible>false</Visible>
+		</Content>
     </ItemGroup>
 
     <PropertyGroup>

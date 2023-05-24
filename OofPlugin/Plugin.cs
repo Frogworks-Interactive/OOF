@@ -1,7 +1,6 @@
 ﻿using Dalamud.Game;
 using Dalamud.Game.ClientState;
 using Dalamud.Game.ClientState.Conditions;
-using Dalamud.Game.ClientState.Objects;
 using Dalamud.Game.ClientState.Party;
 using Dalamud.Game.Command;
 using Dalamud.IoC;
@@ -32,7 +31,7 @@ namespace OofPlugin
         [PluginService] public static ClientState ClientState { get; private set; } = null!;
         [PluginService] public static Condition Condition { get; private set; } = null!;
         [PluginService] public static PartyList PartyList { get; private set; } = null!;
-        [PluginService] public static ObjectTable ObjectTable { get; private set; } = null!;
+        //[PluginService] public static ObjectTable ObjectTable { get; private set; } = null!;
 
         private DalamudPluginInterface PluginInterface { get; init; }
         private CommandManager CommandManager { get; init; }
@@ -72,7 +71,7 @@ namespace OofPlugin
             Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
             Configuration.Initialize(PluginInterface);
 
-            PluginUi = new PluginUI(Configuration, this);
+            PluginUi = new PluginUI(Configuration, this, PluginInterface);
             OofHelpers = new OofHelpers();
 
             // load audio file. idk if this the best way
