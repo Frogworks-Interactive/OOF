@@ -7,11 +7,15 @@ Dalamud plugin that plays the oof sound when you take
 - party/alliance members die
 - run /oof command
 
-#### play oof sound:
+#### craaazzzy features!
+ - use a custom sound file!
+ - instant access to the hour long documentary on oof by hbomberguy!
+ - fully featured settings window!
+### play oof sound:
 ```
 /oof
 ```
-#### change settings:
+### change settings:
 ```
 /oofsettings
 ```
