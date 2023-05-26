@@ -45,8 +45,8 @@ namespace OofPlugin
         public void DrawSettingsWindow()
         {
             if (!SettingsVisible) return;
-
-            ImGui.SetNextWindowSize(new Vector2(380, 470), ImGuiCond.Appearing);
+            // imgui makes me appreciate html/css
+            ImGui.SetNextWindowSize(new Vector2(360, 500), ImGuiCond.Appearing);
             if (ImGui.Begin("oof options", ref settingsVisible,
                  ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse))
             {
@@ -82,28 +82,28 @@ namespace OofPlugin
                 // when self falls options
                 var oofOnFall = configuration.OofOnFall;
                 SectionStart();
-                SectionHeader("Fall Damage", ref oofOnFall, () => { configuration.OofOnFall = oofOnFall; });
+                SectionHeader("Fall damage (self only)", ref oofOnFall, () => { configuration.OofOnFall = oofOnFall; });
                 if (!oofOnFall) ImGui.BeginDisabled();
                 ImGui.Columns(2);
-
-                var oofOnFallMounted = configuration.OofOnFallMounted;
-                if (ImGui.Checkbox("While mounted###fall:mounted", ref oofOnFallMounted))
-                {
-                    configuration.OofOnFallMounted = oofOnFallMounted;
-                    configuration.Save();
-                }
-                ImGui.NextColumn();
-
                 var oofOnFallBattle = configuration.OofOnFallBattle;
                 if (ImGui.Checkbox("During combat###fall:combat", ref oofOnFallBattle))
                 {
                     configuration.OofOnFallBattle = oofOnFallBattle;
                     configuration.Save();
                 }
+
+                ImGui.NextColumn();
+                var oofOnFallMounted = configuration.OofOnFallMounted;
+                if (ImGui.Checkbox("While mounted###fall:mounted", ref oofOnFallMounted))
+                {
+                    configuration.OofOnFallMounted = oofOnFallMounted;
+                    configuration.Save();
+                }
+
                 ImGui.Columns(1);
                 if (!oofOnFall) ImGui.EndDisabled();
 
-                SectionEnd();
+                SectionEnd(oofOnFall ? ImGuiCol.PopupBg : ImGuiCol.TitleBg);
 
                 // when people die options
                 SectionStart();
@@ -147,7 +147,7 @@ namespace OofPlugin
                 ImGui.Columns(1);
                 if (!oofOnDeath) ImGui.EndDisabled();
 
-                SectionEnd();
+                SectionEnd(oofOnDeath ? ImGuiCol.PopupBg : ImGuiCol.TitleBg);
                 ImGui.Spacing();
                 ImGui.Spacing();
 
@@ -168,11 +168,10 @@ namespace OofPlugin
 
                 //logo
                 var size = new Vector2(this.creditsTexture.Width * (float)0.60, this.creditsTexture.Height * (float)0.60);
-                var diff = new Vector2(0, 0);
                 ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, Vector2.Zero);
                 ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 13);
                 ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0, 0, 0, 0));
-                ImGui.SetCursorPos(ImGui.GetWindowSize() - size - diff);
+                ImGui.SetCursorPos(ImGui.GetWindowSize() - size);
 
                 if (ImGui.ImageButton(this.creditsTexture.ImGuiHandle, size)) Util.OpenLink("https://github.com/Frogworks-Interactive");
                 ImGui.PopStyleVar(2);
