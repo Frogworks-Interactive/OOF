@@ -129,7 +129,6 @@ namespace OofPlugin
         private void FrameworkOnUpdate(Framework framework)
         {
             if (ClientState == null || ClientState.LocalPlayer == null) return;
-            if (!Configuration.OofInBattle && Condition[ConditionFlag.InCombat]) return;
             try
             {
                 if (Configuration.OofOnFall) CheckFallen();
@@ -147,9 +146,11 @@ namespace OofPlugin
         /// </summary>
         private void CheckDeath()
         {
+            if (!Configuration.OofOnDeathBattle && Condition[ConditionFlag.InCombat]) return;
+
             if (PartyList != null && PartyList.Any())
             {
-                if (Configuration.OofOthersInAlliance && PartyList.Length == 8 && PartyList.GetAllianceMemberAddress(0) != IntPtr.Zero) // the worst "is alliance" check
+                if (Configuration.OofOnDeathAlliance && PartyList.Length == 8 && PartyList.GetAllianceMemberAddress(0) != IntPtr.Zero) // the worst "is alliance" check
                 {
                     try
                     {
@@ -167,7 +168,7 @@ namespace OofPlugin
                         PluginLog.LogError("failed alliance check", e.Message);
                     }
                 }
-                if (Configuration.OofOthersInParty)
+                if (Configuration.OofOnDeathParty)
                 {
                     foreach (var member in PartyList)
                     {
@@ -178,56 +179,21 @@ namespace OofPlugin
             }
             else
             {
+                if (Configuration.OofOnDeathSelf) return;
                 OofHelpers.AddRemoveDeadPlayer(ClientState!.LocalPlayer!);
             }
 
         }
 
         /// <summary>
-        /// Handle Player death, and add distance if true
-        /// </summary>
-        /// <param name="character">character </param>
-        /// <param name="condition">extra condition</param>
-        //private void AddRemoveDeadPlayer(PlayerCharacter character, bool condition = true)
-        //{
-
-        //    if (character == null) return;
-        //    if (character.CurrentHp == 0 && !DeadPlayers.Any(x => x.PlayerId == character.ObjectId) && condition)
-        //    {
-        //        DeadPlayers.Add(new DeadPlayer { PlayerId = character.ObjectId });
-        //    }
-        //    else if (character.CurrentHp != 0 && DeadPlayers.Any(x => x.PlayerId == character.ObjectId))
-        //    {
-        //        DeadPlayers.RemoveAll(x => x.PlayerId == character.ObjectId);
-        //    }
-        //}
-        //private void AddRemoveDeadPlayer(PartyMember character, bool condition = true)
-        //{
-        //    if (character == null) return;
-        //    float distance = 0;
-        //    if (true)
-        //    {
-        //        var localPlayerPos = ClientState!.LocalPlayer!.Position;
-        //        distance = Vector3.Distance(localPlayerPos, character.Position);
-        //    }
-
-        //    if (character.CurrentHP == 0 && !DeadPlayers.Any(x => x.PlayerId == character.ObjectId) && condition)
-        //    {
-        //        DeadPlayers.Add(new DeadPlayer { PlayerId = character.ObjectId,Distance = distance });
-        //    }
-        //    else if (character.CurrentHP != 0 && DeadPlayers.Any(x => x.PlayerId == character.ObjectId))
-        //    {
-        //        DeadPlayers.RemoveAll(x => x.PlayerId == character.ObjectId);
-        //    }
-        //}
-        /// <summary>
         /// check if player has taken fall damage (brute force way)
         /// </summary>
         private void CheckFallen()
         {
-            // dont run btwn moving areas
-            if (Condition[ConditionFlag.InCombat] || Condition[ConditionFlag.BetweenAreas]) return;
-            if (!Configuration.OofWhileMounted && (Condition[ConditionFlag.Mounted] || Condition[ConditionFlag.Mounted2])) return;
+            // dont run btwn moving areas & also wont work in combat
+            if (Condition[ConditionFlag.BetweenAreas]) return;
+            if (!Configuration.OofOnFallBattle && Condition[ConditionFlag.InCombat]) return;
+            if (!Configuration.OofOnFallMounted && (Condition[ConditionFlag.Mounted] || Condition[ConditionFlag.Mounted2])) return;
 
             var isJumping = Condition[ConditionFlag.Jumping];
             var pos = ClientState!.LocalPlayer!.Position.Y;
@@ -247,7 +213,12 @@ namespace OofPlugin
             prevVel = velocity;
             wasJumping = isJumping;
         }
+        public void StopSound()
+        {
+            soundOut?.Pause();
+            soundOut?.Dispose();
 
+        }
         /// <summary>
         /// Play sound but without referencing windows.forms.
         /// much of the code from: https://github.com/kalilistic/Tippy/blob/5c18d6b21461b0bbe4583a86787ef4a3565e5ce6/src/Tippy/Tippy/Logic/TippyController.cs#L11
@@ -309,9 +280,6 @@ namespace OofPlugin
             }, token);
         }
 
-
-
-
         /// <summary>
         /// open the hbomberguy video on oof
         /// </summary>
@@ -343,7 +311,6 @@ namespace OofPlugin
                 }
             }
         }
-
 
         /// <summary>
         /// dispose

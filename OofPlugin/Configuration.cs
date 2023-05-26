@@ -9,11 +9,13 @@ namespace OofPlugin
     {
         public int Version { get; set; } = 0;
         public bool OofOnFall { get; set; } = true;
+        public bool OofOnFallMounted { get; set; } = true;
+        public bool OofOnFallBattle { get; set; } = true;
         public bool OofOnDeath { get; set; } = true;
-        public bool OofInBattle { get; set; } = true;
-        public bool OofWhileMounted { get; set; } = true;
-        public bool OofOthersInParty { get; set; } = true;
-        public bool OofOthersInAlliance { get; set; } = true;
+        public bool OofOnDeathBattle { get; set; } = true;
+        public bool OofOnDeathSelf { get; set; } = true;
+        public bool OofOnDeathParty { get; set; } = true;
+        public bool OofOnDeathAlliance { get; set; } = true;
         public float Volume { get; set; } = 0.5f;
         public string DefaultSoundImportPath { get; set; } = string.Empty;
 
