@@ -11,6 +11,7 @@ using NAudio.Wave;
 using System;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -299,12 +300,17 @@ namespace OofPlugin
                 await Task.Delay(200, token);
                 if (token.IsCancellationRequested) break;
                 if (!OofHelpers.DeadPlayers.Any()) continue;
-
+                if (ClientState!.LocalPlayer! == null) continue;
                 foreach (var player in OofHelpers.DeadPlayers)
                 {
                     if (player.DidPlayOof) continue;
-
-                    PlaySound(token);
+                    float volume = 1f;
+                    if (Configuration.DistanceBasedOof && player.Distance != Vector3.Zero && player.Distance != ClientState!.LocalPlayer!.Position)
+                    {
+                        var dist = Vector3.Distance(ClientState!.LocalPlayer!.Position, player.Distance);
+                        volume = Math.Max(Configuration.DistanceMinVolume, 1f / (dist * Configuration.DistanceFalloff));
+                    }
+                    PlaySound(token, volume);
                     player.DidPlayOof = true;
                     break;
 

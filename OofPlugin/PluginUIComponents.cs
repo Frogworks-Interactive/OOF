@@ -33,31 +33,33 @@ namespace OofPlugin
         /// 
         /// https://github.com/ocornut/imgui/issues/1496#issuecomment-1200143122
         /// </summary>
-        public static void SectionStart()
+        public static void SectionStart(float height = 0f)
         {
             ImGui.GetWindowDrawList().ChannelsSplit(2);
             // Draw content above the rectangle
             ImGui.GetWindowDrawList().ChannelsSetCurrent(1);
-
+            var WindowPos = ImGui.GetWindowPos();
             var padding = ImGui.GetStyle().WindowPadding;
-            //var boundsX = calculateSectionBoundsX(padding.X);
-            //var rectMin = ImGui.GetItemRectMin();
-            //var rectMax = ImGui.GetItemRectMax();
+            var boundsX = calculateSectionBoundsX(padding.X);
             ImGui.SetCursorPosY(ImGui.GetCursorPosY() + padding.Y);
             ImGui.BeginGroup();
             if (padding.Y > 0)
             {
                 ImGui.Indent(padding.Y);
             }
+            var panelMin = new Vector2(boundsX.Start, ImGui.GetItemRectMin().Y);
+            var panelMax = new Vector2(boundsX.End, height);
+            ImGui.GetWindowDrawList().PushClipRect(panelMin, panelMax, false);
 
         }
         /// <summary>
         /// end section with filled bg
         /// </summary>
         /// <param name="color"></param>
-        public static void SectionEnd(ImGuiCol bg = ImGuiCol.MenuBarBg, ImGuiCol border = ImGuiCol.TableBorderLight)
+        public static void SectionEnd(ref float height, ImGuiCol bg = ImGuiCol.MenuBarBg, ImGuiCol border = ImGuiCol.TableBorderLight)
         {
             var padding = ImGui.GetStyle().WindowPadding;
+            ImGui.PopClipRect();
 
             // ImGui.PopClipRect();
             if (padding.X > 0)
@@ -74,7 +76,7 @@ namespace OofPlugin
 
             var panelMin = new Vector2(boundsX.Start, ImGui.GetItemRectMin().Y - padding.Y);
             var panelMax = new Vector2(boundsX.End, ImGui.GetItemRectMax().Y + padding.Y);
-
+            height = ImGui.GetItemRectMax().Y;
             // Draw rectangle below
             ImGui.GetWindowDrawList().ChannelsSetCurrent(0);
             ImGui.GetWindowDrawList().AddRectFilled(
@@ -111,7 +113,7 @@ namespace OofPlugin
             ImGui.SameLine();
             ImGuiHelpers.SafeTextColoredWrapped(ImGuiColors.DalamudWhite2, title);
 
-            ImGui.SameLine(ImGui.GetWindowWidth() - textSize.X - ImGui.GetFontSize() * 1.7f - padding.X * 2);
+            ImGui.SameLine(ImGui.GetWindowWidth() - textSize.X - ImGui.GetFontSize() * 1.8f - padding.X * 2);
             ImGuiHelpers.SafeTextColoredWrapped(ImGuiColors.DalamudWhite2, $"{text}");
             ImGui.SameLine();
             var iconString = toggle ? FontAwesomeIcon.CheckSquare.ToIconString() : FontAwesomeIcon.SquareXmark.ToIconString();

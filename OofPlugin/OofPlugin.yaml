@@ -1,8 +1,16 @@
 name: OOF!
 author: Frogworks Interactive
 punchline: Play the OOF! sound on fall and/or death. The Only Plugin You Need!
-description: i love roblox!!! 
-            [OOF documentary (hbomberguy)](https://www.youtube.com/watch?v=0twDETh6QaI)
+description: |-
+  i love roblox!!! 
+             
+  craaazzzy features
+    - oof on party & alliance deaths!
+    - use custom mp3 sounds! 
+    - DBO© (Distance Based Oof)!
+    - instant access to the hour long documentary on oof by hbomberguy!
+    - fully featured settings window!
+            
 repo_url: https://github.com/Frogworks-Interactive/OOF
 internal_name: OofPlugin
 dalamud_api_level: 8

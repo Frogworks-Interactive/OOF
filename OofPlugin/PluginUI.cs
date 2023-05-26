@@ -1,5 +1,6 @@
 ﻿using Dalamud.Interface;
 using Dalamud.Interface.Colors;
+using Dalamud.Interface.Components;
 using Dalamud.Interface.ImGuiFileDialog;
 using Dalamud.Plugin;
 using Dalamud.Utility;
@@ -20,6 +21,8 @@ namespace OofPlugin
         private readonly TextureWrap creditsTexture;
         private FileDialogManager manager { get; }
         private bool settingsVisible = false;
+        private float fallOptionsHeight = 0;
+        private float deathOptionsHeight = 0;
         public bool SettingsVisible
         {
             get { return settingsVisible; }
@@ -45,8 +48,8 @@ namespace OofPlugin
         public void DrawSettingsWindow()
         {
             if (!SettingsVisible) return;
-            // imgui makes me appreciate html/css
-            ImGui.SetNextWindowSize(new Vector2(360, 500), ImGuiCond.Appearing);
+            // i miss html/css
+            ImGui.SetNextWindowSize(new Vector2(355, 560), ImGuiCond.Appearing);
             if (ImGui.Begin("oof options", ref settingsVisible,
                  ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse))
             {
@@ -81,7 +84,7 @@ namespace OofPlugin
 
                 // when self falls options
                 var oofOnFall = configuration.OofOnFall;
-                SectionStart();
+                SectionStart(fallOptionsHeight);
                 SectionHeader("Fall damage (self only)", ref oofOnFall, () => { configuration.OofOnFall = oofOnFall; });
                 if (!oofOnFall) ImGui.BeginDisabled();
                 ImGui.Columns(2);
@@ -103,10 +106,10 @@ namespace OofPlugin
                 ImGui.Columns(1);
                 if (!oofOnFall) ImGui.EndDisabled();
 
-                SectionEnd(oofOnFall ? ImGuiCol.PopupBg : ImGuiCol.TitleBg);
+                SectionEnd(ref fallOptionsHeight, oofOnFall ? ImGuiCol.PopupBg : ImGuiCol.TitleBg);
 
                 // when people die options
-                SectionStart();
+                SectionStart(deathOptionsHeight);
                 var oofOnDeath = configuration.OofOnDeath;
 
                 SectionHeader("Death", ref oofOnDeath, () => { configuration.OofOnDeath = oofOnDeath; });
@@ -145,13 +148,56 @@ namespace OofPlugin
                     configuration.Save();
                 }
                 ImGui.Columns(1);
+                ImGui.Spacing();
+
+                ImGui.Separator();
+                // distance based oof
+                ImGui.Spacing();
+
+                var distanceBasedOof = configuration.DistanceBasedOof;
+                if (ImGui.Checkbox("Distance Based Oof (DBO)###death:distance", ref distanceBasedOof))
+                {
+                    configuration.DistanceBasedOof = distanceBasedOof;
+                    configuration.Save();
+                }
+                ImGui.SameLine();
+                ImGuiComponents.HelpMarker(
+               "change volume based on how far away \nthe player dies from you");
+
+                ImGui.Columns(2);
+
+                if (!distanceBasedOof) ImGui.BeginDisabled();
+
+
+                ImGuiHelpers.SafeTextColoredWrapped(headingColor, "Falloff Intensity");
+                var distanceFalloff = configuration.DistanceFalloff;
+                ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
+                if (ImGui.SliderFloat("###death:distance:falloff", ref distanceFalloff, 0.0f, 1.0f))
+                {
+                    configuration.DistanceFalloff = distanceFalloff;
+                    configuration.Save();
+                }
+
+                ImGui.NextColumn();
+                ImGuiHelpers.SafeTextColoredWrapped(headingColor, "Minimum Volume");
+                var distanceMinVolume = configuration.DistanceMinVolume;
+                ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - ImGui.GetStyle().WindowPadding.X);
+                if (ImGui.SliderFloat("###death:distance:volume", ref distanceMinVolume, 0.0f, 1.0f))
+                {
+                    configuration.DistanceMinVolume = distanceMinVolume;
+                    configuration.Save();
+                }
+                if (!distanceBasedOof) ImGui.EndDisabled();
+                ImGui.Columns(1);
+
                 if (!oofOnDeath) ImGui.EndDisabled();
 
-                SectionEnd(oofOnDeath ? ImGuiCol.PopupBg : ImGuiCol.TitleBg);
+                SectionEnd(ref deathOptionsHeight, oofOnDeath ? ImGuiCol.PopupBg : ImGuiCol.TitleBg);
                 ImGui.Spacing();
                 ImGui.Spacing();
 
                 ImGui.Separator();
+                // watch video!
                 ImGui.Spacing();
 
                 ImGuiHelpers.SafeTextColoredWrapped(ImGuiColors.DalamudWhite2, "Learn about the history behind the Roblox Oof with Hbomberguy's Documentary:");
