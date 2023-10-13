@@ -4,8 +4,8 @@ using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Party;
 using Dalamud.Game.Command;
 using Dalamud.IoC;
-using Dalamud.Logging;
 using Dalamud.Plugin;
+using Dalamud.Plugin.Services;
 using Dalamud.Utility;
 using NAudio.Wave;
 using System;
@@ -13,14 +13,13 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Threading;
-using System.Threading.Tasks;
-
+using Task = System.Threading.Tasks.Task;
 
 //shoutout anna clemens
 
 namespace OofPlugin
 {
-    public sealed class Plugin : IDalamudPlugin
+    public sealed class OofPlugin : IDalamudPlugin
     {
         public string Name => "OOF";
 
@@ -28,14 +27,15 @@ namespace OofPlugin
         private const string oofSettings = "/oofsettings";
         private const string oofVideo = "/oofvideo";
 
-        [PluginService] public static Framework Framework { get; private set; } = null!;
-        [PluginService] public static ClientState ClientState { get; private set; } = null!;
-        [PluginService] public static Condition Condition { get; private set; } = null!;
-        [PluginService] public static PartyList PartyList { get; private set; } = null!;
+        [PluginService] public static IFramework Framework { get; private set; } = null!;
+        [PluginService] public static IClientState ClientState { get; private set; } = null!;
+        [PluginService] public static ICondition Condition { get; private set; } = null!;
+        [PluginService] public static IPartyList PartyList { get; private set; } = null!;
+        [PluginService] public static IPluginLog PluginLog { get; set; } = null!;
         //[PluginService] public static ObjectTable ObjectTable { get; private set; } = null!;
 
         private DalamudPluginInterface PluginInterface { get; init; }
-        private CommandManager CommandManager { get; init; }
+        private ICommandManager CommandManager { get; init; }
         private Configuration Configuration { get; init; }
         private PluginUI PluginUi { get; init; }
         private OofHelpers OofHelpers { get; init; }
@@ -63,9 +63,9 @@ namespace OofPlugin
 
         public CancellationTokenSource CancelToken;
 
-        public Plugin(
+        public OofPlugin(
             [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
-            [RequiredVersion("1.0")] CommandManager commandManager)
+            [RequiredVersion("1.0")] ICommandManager commandManager)
         {
             PluginInterface = pluginInterface;
             CommandManager = commandManager;
@@ -127,7 +127,7 @@ namespace OofPlugin
         {
             PluginUi.SettingsVisible = true;
         }
-        private void FrameworkOnUpdate(Framework framework)
+        private void FrameworkOnUpdate(IFramework framework)
         {
             if (ClientState == null || ClientState.LocalPlayer == null) return;
             try
@@ -166,7 +166,7 @@ namespace OofPlugin
                     }
                     catch (Exception e)
                     {
-                        PluginLog.LogError("failed alliance check", e.Message);
+                        PluginLog.Error("failed alliance check", e.Message);
                     }
                 }
                 if (Configuration.OofOnDeathParty)
@@ -344,7 +344,7 @@ namespace OofPlugin
             }
             catch (Exception e)
             {
-                PluginLog.LogError("Failed to dispose oofplugin controller", e.Message);
+                PluginLog.Error("Failed to dispose oofplugin controller", e.Message);
             }
 
 

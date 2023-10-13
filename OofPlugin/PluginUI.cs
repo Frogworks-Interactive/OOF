@@ -2,6 +2,8 @@
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Components;
 using Dalamud.Interface.ImGuiFileDialog;
+using Dalamud.Interface.Internal;
+using Dalamud.Interface.Utility;
 using Dalamud.Plugin;
 using Dalamud.Utility;
 using ImGuiNET;
@@ -17,8 +19,8 @@ namespace OofPlugin
     {
         private Configuration configuration;
 
-        private Plugin plugin;
-        private readonly TextureWrap creditsTexture;
+        private OofPlugin plugin;
+        private readonly IDalamudTextureWrap creditsTexture;
         private FileDialogManager manager { get; }
         private bool settingsVisible = false;
         private float fallOptionsHeight = 0;
@@ -28,7 +30,7 @@ namespace OofPlugin
             get { return settingsVisible; }
             set { settingsVisible = value; }
         }
-        public PluginUI(Configuration configuration, Plugin plugin, DalamudPluginInterface pluginInterface)
+        public PluginUI(Configuration configuration, OofPlugin plugin, DalamudPluginInterface pluginInterface)
         {
             this.configuration = configuration;
             this.plugin = plugin;
@@ -202,7 +204,7 @@ namespace OofPlugin
 
                 ImGuiHelpers.SafeTextColoredWrapped(ImGuiColors.DalamudWhite2, "Learn about the history behind the Roblox Oof with Hbomberguy's Documentary:");
 
-                if (ImGui.Button("Watch on Youtube")) Plugin.OpenVideo();
+                if (ImGui.Button("Watch on Youtube")) OofPlugin.OpenVideo();
                 var desc = "Hot Tip: You can Macro the /oofvideo command to\n for easy and streamlined access to this video.";
 
                 if (ImGui.IsItemHovered()) ImGui.SetTooltip(desc);
