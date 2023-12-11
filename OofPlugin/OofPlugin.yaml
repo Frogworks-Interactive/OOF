@@ -13,7 +13,7 @@ description: |-
             
 repo_url: https://github.com/Frogworks-Interactive/OOF
 internal_name: OofPlugin
-dalamud_api_level: 8
+dalamud_api_level: 9
 tags:
   - Oof
   - Fall Damage
