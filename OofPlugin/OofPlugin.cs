@@ -3,16 +3,20 @@ using Dalamud.Game.ClientState;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Party;
 using Dalamud.Game.Command;
+using Dalamud.Interface.Utility.Table;
 using Dalamud.IoC;
 using Dalamud.Plugin;
+using Dalamud.Plugin.Ipc.Exceptions;
 using Dalamud.Plugin.Services;
 using Dalamud.Utility;
+using FFXIVClientStructs.FFXIV.Client.System.Framework;
 using NAudio.Wave;
 using System;
 using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Threading;
+using static Lumina.Data.Parsing.Layer.LayerCommon;
 using Task = System.Threading.Tasks.Task;
 
 //shoutout anna clemens
@@ -43,7 +47,6 @@ namespace OofPlugin
         // i love global variables!!!! the more global the more globaly it gets
         // sound
         public bool isSoundPlaying { get; set; } = false;
-        // private WaveStream? reader;
         private DirectSoundOut? soundOut;
         private string? soundFile { get; set; }
 
@@ -305,10 +308,11 @@ namespace OofPlugin
                 {
                     if (player.DidPlayOof) continue;
                     float volume = 1f;
-                    if (Configuration.DistanceBasedOof && player.Distance != Vector3.Zero && player.Distance != ClientState!.LocalPlayer!.Position)
+                    if (Configuration.DistanceBasedOof && player.Distance != ClientState!.LocalPlayer!.Position)
                     {
-                        var dist = Vector3.Distance(ClientState!.LocalPlayer!.Position, player.Distance);
-                        volume = Math.Max(Configuration.DistanceMinVolume, 1f / (dist * Configuration.DistanceFalloff));
+                        var dist = 0f;
+                        if (player.Distance != Vector3.Zero) dist = Vector3.Distance(ClientState!.LocalPlayer!.Position, player.Distance);
+                        volume = CalcVolumeFromDist(dist);
                     }
                     PlaySound(token, volume);
                     player.DidPlayOof = true;
@@ -317,6 +321,30 @@ namespace OofPlugin
                 }
             }
         }
+        public float CalcVolumeFromDist(float dist,float distMax = 30)
+        {
+            if (dist > distMax) dist = distMax;
+            var falloff = Configuration.DistanceFalloff > 0 ? 3f - Configuration.DistanceFalloff*3f : 3f - 0.001f;
+            var vol = 1f - ((dist / distMax) *  ( 1 / falloff));
+            return Math.Max(Configuration.DistanceMinVolume, vol);
+        }
+
+        public async Task TestDistanceAudio(CancellationToken token)
+        {
+            async Task CheckthenPlay(float volume)
+            {
+                if (token.IsCancellationRequested) return;
+            
+                PlaySound(token, volume);
+                await Task.Delay(500, token);
+            }
+            await CheckthenPlay(CalcVolumeFromDist(0));
+            await CheckthenPlay(CalcVolumeFromDist(10));
+            await CheckthenPlay(CalcVolumeFromDist(20));
+            await CheckthenPlay(CalcVolumeFromDist(30));
+
+        }
+
 
         /// <summary>
         /// dispose

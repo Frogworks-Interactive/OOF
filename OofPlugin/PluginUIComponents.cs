@@ -5,7 +5,7 @@ using Dalamud.Interface.Utility;
 using ImGuiNET;
 using System;
 using System.Numerics;
-
+/// ok i knooow partial class files are like not the right way to do things but like im lazy asf
 namespace OofPlugin
 {
     public partial class PluginUI
@@ -57,7 +57,7 @@ namespace OofPlugin
         /// end section with filled bg
         /// </summary>
         /// <param name="color"></param>
-        public static void SectionEnd(ref float height, ImGuiCol bg = ImGuiCol.MenuBarBg, ImGuiCol border = ImGuiCol.TableBorderLight)
+        public static void SectionEnd(ref float height, ImGuiCol bg = ImGuiCol.MenuBarBg, ImGuiCol border = ImGuiCol.MenuBarBg)
         {
             var padding = ImGui.GetStyle().WindowPadding;
             ImGui.PopClipRect();
@@ -114,12 +114,19 @@ namespace OofPlugin
             ImGui.SameLine();
             ImGuiHelpers.SafeTextColoredWrapped(ImGuiColors.DalamudWhite2, title);
 
-            ImGui.SameLine(ImGui.GetWindowWidth() - textSize.X - ImGui.GetFontSize() * 1.8f - padding.X * 2);
-            ImGuiHelpers.SafeTextColoredWrapped(ImGuiColors.DalamudWhite2, $"{text}");
+            ImGui.SameLine(ImGui.GetWindowWidth() - textSize.X - ImGui.GetFontSize() * 1f - padding.X);
+
+            Vector4 lowOpacityRed = ImGuiColors.DalamudRed;
+            lowOpacityRed[3] = 30;
+            var statusColor = toggle ? ImGuiColors.DalamudGrey2 : lowOpacityRed;
+
+            ImGuiHelpers.SafeTextColoredWrapped(statusColor, $"{text}");
             ImGui.SameLine();
-            var iconString = toggle ? FontAwesomeIcon.CheckSquare.ToIconString() : FontAwesomeIcon.SquareXmark.ToIconString();
-            IconTextColor(iconString, ImGuiColors.DalamudWhite2);
+    
             ImGui.Spacing();
+            ImGui.Spacing();
+            ImGui.Spacing();
+            
         }
 
         private static void IconTextColor(string text, Vector4 color = new Vector4())
@@ -138,7 +145,12 @@ namespace OofPlugin
         {
             return value + ImGui.GetStyle().FramePadding.X * 2;
         }
-        private void LoadAudioUI()
+
+
+        /// <summary>
+        /// load audio interface
+        /// </summary>
+        private void AddLoadAudioUI()
         {
             var WindowPos = ImGui.GetWindowPos();
             var windowPadding = ImGui.GetStyle().WindowPadding;
@@ -147,9 +159,9 @@ namespace OofPlugin
 
             ImGui.AlignTextToFramePadding();
 
-            ImGuiHelpers.SafeTextColoredWrapped(ImGuiColors.DalamudGrey, "Loaded SoundFile");
+            ImGuiHelpers.SafeTextColoredWrapped(ImGuiColors.DalamudGrey, "Sound file to play");
             ImGuiComponents.HelpMarker(
-               "You can upload a custom audio file from computer. ");
+               "The audio that is triggered on death/fall damage");
             ImGui.SameLine(ImGui.GetWindowWidth() - CalcButtonSize(em) - windowPadding.X);
             if (ImGuiComponents.IconButton(FontAwesomeIcon.UndoAlt))
             {
@@ -159,17 +171,17 @@ namespace OofPlugin
 
             }
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip("Reset audio file to oof");
+                ImGui.SetTooltip("Reset audio file to default (oof)");
 
             ImGui.PushFont(UiBuilder.IconFont);
-            if (CornerButton(FontAwesomeIcon.PlayCircle.ToIconString(), ImDrawFlags.RoundCornersLeft)) plugin.PlaySound(plugin.CancelToken.Token);
+            if (CornerButton(FontAwesomeIcon.Play.ToIconString(), "volume:play", ImDrawFlags.RoundCornersLeft)) plugin.PlaySound(plugin.CancelToken.Token);
             ImGui.PopFont();
             if (ImGui.IsItemHovered()) ImGui.SetTooltip("Play");
 
             ImGui.SameLine(0, 0);
 
             ImGui.PushFont(UiBuilder.IconFont);
-            if (CornerButton(FontAwesomeIcon.StopCircle.ToIconString(), ImDrawFlags.RoundCornersRight)) plugin.StopSound();
+            if (CornerButton(FontAwesomeIcon.Stop.ToIconString(),"volume:stop", ImDrawFlags.RoundCornersRight)) plugin.StopSound();
             ImGui.PopFont();
 
             if (ImGui.IsItemHovered()) ImGui.SetTooltip("Stop");
@@ -183,13 +195,13 @@ namespace OofPlugin
                 if (formatString.Success) soundFileName = formatString.Value;
 
             }
-            customDraggableText(soundFileName);
-
             var browseText = "Upload Audio";
+            var buttonWidth = CalcButtonSize(browseText) + ImGui.GetFontSize() * 1.4f ;
+            customDraggableText(soundFileName, buttonWidth);
 
-            ImGui.SameLine(ImGui.GetWindowWidth() - CalcButtonSize(browseText) - windowPadding.X);
 
-            if (ImGui.Button(browseText))
+            ImGui.SameLine();
+            if (ImGuiComponents.IconButtonWithText(FontAwesomeIcon.FolderOpen, browseText))
             {
                 void UpdatePath(bool success, string path)
                 {
@@ -202,21 +214,22 @@ namespace OofPlugin
 
                 manager.OpenFileDialog("Open Audio File...", "Audio{.wav,.mp3,.aac,.wma}", UpdatePath);
             }
-            ImGui.Spacing();
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip("upload a custom audio file from your very own computer.");
+
         }
         /// <summary>
-        /// theres no reason to use this over an input box but it was fun to make
         /// makes textbox draggable if text overflows
+        ///         
+        /// theres no reason to use this over an input box but it was fun to make
         /// </summary>
-        private static void customDraggableText(string text)
+        private static void customDraggableText(string text,float rightsideSpacing)
         {
             var WindowPos = ImGui.GetWindowPos();
             var draw = ImGui.GetWindowDrawList();
-            var em = ImGui.GetFontSize();
 
             var cursorPos = ImGui.GetCursorPos();
             var panelMin = new Vector2(cursorPos.X + WindowPos.X, ImGui.GetItemRectMin().Y);
-            var panelMax = new Vector2(WindowPos.X + ImGui.GetContentRegionAvail().X - CalcButtonSize(em) - ImGui.GetStyle().ItemSpacing.X, ImGui.GetItemRectMax().Y);
+            var panelMax = new Vector2(WindowPos.X + cursorPos.X + ImGui.GetContentRegionAvail().X - rightsideSpacing - ImGui.GetStyle().WindowPadding.X, ImGui.GetItemRectMax().Y);
             var boxSize = panelMax - panelMin;
             var framePadding = ImGui.GetStyle().FramePadding;
 
@@ -283,7 +296,7 @@ namespace OofPlugin
             drawList.AddCircleFilled(new Vector2(p.X + radius + ((v ? 1 : 0) * (width - (radius * 2.0f))), p.Y + radius), radius - 1.5f, ImGui.GetColorU32(ImGuiColors.DalamudWhite2));
             return changed;
         }
-        public static bool CornerButton(string text, ImDrawFlags flags = ImDrawFlags.None)
+        public static bool CornerButton(string text, string id, ImDrawFlags flags = ImDrawFlags.None)
         {
 
             var p = ImGui.GetCursorScreenPos();
@@ -296,7 +309,7 @@ namespace OofPlugin
             // TODO: animate
             // Draw content above the rectangle
             var changed = false;
-            ImGui.InvisibleButton(text, boxsize);
+            ImGui.InvisibleButton(text + "###"+ id, boxsize);
             if (ImGui.IsItemClicked())
             {
 
