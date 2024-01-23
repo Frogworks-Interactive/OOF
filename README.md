@@ -24,4 +24,4 @@ Dalamud plugin that plays the oof sound when you take
 ## install
 now in the dalamud repository! 
 
-open dalamud plugins options > turn on testing builds
+
