@@ -40,8 +40,8 @@ namespace OofPlugin
         {
             if (character == null) return;
 
-            var deadPlayer = new DeadPlayer { PlayerId = character.DataId };
-            AddRemoveDeadPlayer(deadPlayer, character.CurrentHp, character.DataId);
+            var deadPlayer = new DeadPlayer { PlayerId = character.EntityId };
+            AddRemoveDeadPlayer(deadPlayer, character.CurrentHp, character.EntityId);
         }
 
         /// <summary>

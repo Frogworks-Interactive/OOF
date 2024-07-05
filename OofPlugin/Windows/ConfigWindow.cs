@@ -135,7 +135,7 @@ public class ConfigWindow : Window, IDisposable
         {
             Configuration.DefaultSoundImportPath = string.Empty;
             Configuration.Save();
-            Plugin.LoadSoundFile();
+            Plugin.SoundManager.LoadFile();
         }
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip("Reset audio file to default (oof)");
@@ -143,7 +143,7 @@ public class ConfigWindow : Window, IDisposable
 
         if (UIComponents.IconCornerButton(FontAwesomeIcon.Play, "volume:play", ImDrawFlags.RoundCornersLeft))
         {
-            Plugin.PlaySound(Plugin.CancelToken.Token);
+            Plugin.SoundManager.Play(Plugin.SoundManager.CancelToken.Token);
         }
         if (ImGui.IsItemHovered()) ImGui.SetTooltip("Play");
 
@@ -151,7 +151,7 @@ public class ConfigWindow : Window, IDisposable
 
         if (UIComponents.IconCornerButton(FontAwesomeIcon.Stop, "volume:stop", ImDrawFlags.RoundCornersRight))
         {
-            Plugin.StopSound();
+            Plugin.SoundManager.Stop();
         }
         if (ImGui.IsItemHovered()) ImGui.SetTooltip("Stop");
 
@@ -178,7 +178,7 @@ public class ConfigWindow : Window, IDisposable
 
                 Configuration.DefaultSoundImportPath = path;
                 Configuration.Save();
-                Plugin.LoadSoundFile();
+                Plugin.SoundManager.LoadFile();
             }
 
             fileDialogManager.OpenFileDialog("Open Audio File...", "Audio{.wav,.mp3,.aac,.wma}", UpdatePath);
@@ -272,7 +272,7 @@ public class ConfigWindow : Window, IDisposable
 
         if (UIComponents.IconCornerButton(FontAwesomeIcon.Play, "dbo:play", ImDrawFlags.RoundCornersLeft))
         {
-            _ = Plugin.TestDistanceAudio(Plugin.CancelToken.Token);
+            _ = Plugin.SoundManager.TestDistanceAudio(Plugin.SoundManager.CancelToken.Token);
         }
         if (ImGui.IsItemHovered()) ImGui.SetTooltip("Test how distance affects sound");
 
@@ -280,7 +280,7 @@ public class ConfigWindow : Window, IDisposable
 
         if (UIComponents.IconCornerButton(FontAwesomeIcon.Stop, "dbo:stop", ImDrawFlags.RoundCornersRight))
         {
-            Plugin.StopSound();
+            Plugin.SoundManager.Stop();
         }
 
         ImGuiHelpers.SafeTextColoredWrapped(headingColor, "Lower volume based on how far someone dies from you, from 0 to 30 yalms");
@@ -293,7 +293,7 @@ public class ConfigWindow : Window, IDisposable
         for (int i = 0; i < steps; i++)
         {
             distancePoints[i] = step * i;
-            volumemPoints[i] = Plugin.CalcVolumeFromDist(step * i);
+            volumemPoints[i] = Plugin.SoundManager.VolumeFromDist(step * i);
 
         }
         if (ImPlot.BeginPlot("##dbo:graph", new Vector2(-1, 80), ImPlotFlags.CanvasOnly))
