@@ -222,7 +222,6 @@ public class ConfigWindow : Window, IDisposable
         {
             Configuration.OofOnFallMounted = value;
         });
-
         ImGui.Columns(1);
     }
     /// <summary>

@@ -36,7 +36,7 @@ internal class SoundManager : IDisposable
     {
         if (Configuration.DefaultSoundImportPath.Length == 0)
         {
-            var path = Path.Combine(OofPlugin.PluginInterface.AssemblyLocation.Directory?.FullName!, "oof.wav");
+            var path = Path.Combine(Dalamud.PluginInterface.AssemblyLocation.Directory?.FullName!, "oof.wav");
             soundFile = path;
             return;
         }
@@ -68,7 +68,7 @@ internal class SoundManager : IDisposable
             catch (Exception ex)
             {
                 isSoundPlaying = false;
-                OofPlugin.PluginLog.Error("Failed read file", ex);
+                Dalamud.Log.Error("Failed read file", ex);
                 return;
             }
 
@@ -102,7 +102,7 @@ internal class SoundManager : IDisposable
                 catch (Exception ex)
                 {
                     isSoundPlaying = false;
-                    OofPlugin.PluginLog.Error("Failed play sound", ex);
+                    Dalamud.Log.Error("Failed play sound", ex);
                     return;
                 }
             }
@@ -123,15 +123,15 @@ internal class SoundManager : IDisposable
             await Task.Delay(200, token);
             if (token.IsCancellationRequested) break;
             if (!DeadPlayersList.DeadPlayers.Any()) continue;
-            if (OofPlugin.ClientState!.LocalPlayer! == null) continue;
+            if (Dalamud.ClientState!.LocalPlayer! == null) continue;
             foreach (var player in DeadPlayersList.DeadPlayers)
             {
                 if (player.DidPlayOof) continue;
                 float volume = 1f;
-                if (Configuration.DistanceBasedOof && player.Distance != OofPlugin.ClientState!.LocalPlayer!.Position)
+                if (Configuration.DistanceBasedOof && player.Distance != Dalamud.ClientState!.LocalPlayer!.Position)
                 {
                     var dist = 0f;
-                    if (player.Distance != Vector3.Zero) dist = Vector3.Distance(OofPlugin.ClientState!.LocalPlayer!.Position, player.Distance);
+                    if (player.Distance != Vector3.Zero) dist = Vector3.Distance(Dalamud.ClientState!.LocalPlayer!.Position, player.Distance);
                     volume = VolumeFromDist(dist);
                 }
                 Play(token, volume);
@@ -182,7 +182,7 @@ internal class SoundManager : IDisposable
         }
         catch (Exception e)
         {
-            OofPlugin.PluginLog.Error("Failed to dispose oofplugin controller", e.Message);
+            Dalamud.Log.Error("Failed to dispose oofplugin controller", e.Message);
         }
     }
 }

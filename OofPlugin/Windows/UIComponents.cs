@@ -291,5 +291,14 @@ internal class UIComponents
             Configuration.Save();
         }
     }
+    public void CheckboxTest(string name, ref bool value)
+    {
+        var isChecked = value;
+        if (ImGui.Checkbox(name, ref isChecked))
+        {
+            value = isChecked;
+            Configuration.Save();
+        }
+    }
 }
 
