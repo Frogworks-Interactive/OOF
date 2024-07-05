@@ -1,22 +1,17 @@
-﻿using Dalamud.Game;
-using Dalamud.Game.ClientState;
-using Dalamud.Game.ClientState.Conditions;
-using Dalamud.Game.ClientState.Party;
+﻿using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.Command;
-using Dalamud.Interface.Utility.Table;
+using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Plugin;
-using Dalamud.Plugin.Ipc.Exceptions;
 using Dalamud.Plugin.Services;
 using Dalamud.Utility;
-using FFXIVClientStructs.FFXIV.Client.System.Framework;
 using NAudio.Wave;
+using OofPlugin.Windows;
 using System;
 using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Threading;
-using static Lumina.Data.Parsing.Layer.LayerCommon;
 using Task = System.Threading.Tasks.Task;
 
 //shoutout anna clemens
@@ -30,19 +25,19 @@ namespace OofPlugin
         private const string oofCommand = "/oof";
         private const string oofSettings = "/oofsettings";
         private const string oofVideo = "/oofvideo";
+        [PluginService] internal static IFramework Framework { get; private set; } = null!;
+        [PluginService] internal static IDalamudPluginInterface PluginInterface { get; private set; } = null!;
+        [PluginService] internal static ICommandManager CommandManager { get; private set; } = null!;
+        [PluginService] internal static IClientState ClientState { get; private set; } = null!;
+        [PluginService] internal static ICondition Condition { get; private set; } = null!;
+        [PluginService] internal static IPartyList PartyList { get; private set; } = null!;
+        [PluginService] internal static IPluginLog PluginLog { get; set; } = null!;
+        [PluginService] internal static ITextureProvider TextureProvider { get; private set; } = null!;
+        public Configuration Configuration { get; init; }
 
-        [PluginService] public static IFramework Framework { get; private set; } = null!;
-        [PluginService] public static IClientState ClientState { get; private set; } = null!;
-        [PluginService] public static ICondition Condition { get; private set; } = null!;
-        [PluginService] public static IPartyList PartyList { get; private set; } = null!;
-        [PluginService] public static IPluginLog PluginLog { get; set; } = null!;
-        //[PluginService] public static ObjectTable ObjectTable { get; private set; } = null!;
-
-        private DalamudPluginInterface PluginInterface { get; init; }
-        private ICommandManager CommandManager { get; init; }
-        private Configuration Configuration { get; init; }
-        private PluginUI PluginUi { get; init; }
-        private OofHelpers OofHelpers { get; init; }
+        public readonly WindowSystem WindowSystem = new("OofPlugin");
+        private ConfigWindow ConfigWindow { get; init; }
+        private DeadPlayersList DeadPlayersList { get; init; }
 
         // i love global variables!!!! the more global the more globaly it gets
         // sound
@@ -56,30 +51,14 @@ namespace OofPlugin
         private float distJump { get; set; } = 0;
         private bool wasJumping { get; set; } = false;
 
-        //public class DeadPlayer
-        //{
-        //    public uint PlayerId;
-        //    public bool DidPlayOof = false;
-        //    public float Distance = 0;
-        //}
-        //public List<DeadPlayer> DeadPlayers { get; set; } = new List<DeadPlayer>();
-
         public CancellationTokenSource CancelToken;
 
-        public OofPlugin(
-            [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
-            [RequiredVersion("1.0")] ICommandManager commandManager)
+        public OofPlugin()
         {
-            PluginInterface = pluginInterface;
-            CommandManager = commandManager;
+            DeadPlayersList = new DeadPlayersList();
+
             Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
             Configuration.Initialize(PluginInterface);
-
-            PluginUi = new PluginUI(Configuration, this, PluginInterface);
-            OofHelpers = new OofHelpers();
-
-            // load audio file. idk if this the best way
-            LoadSoundFile();
 
             CommandManager.AddHandler(oofCommand, new CommandInfo(OnCommand)
             {
@@ -94,8 +73,15 @@ namespace OofPlugin
                 HelpMessage = "open Hbomberguy video on OOF.mp3"
             });
 
+            // load audio file. idk if this the best way
+            LoadSoundFile();
+
+            ConfigWindow = new ConfigWindow(this);
+            WindowSystem.AddWindow(ConfigWindow);
+
             PluginInterface.UiBuilder.Draw += DrawUI;
-            PluginInterface.UiBuilder.OpenConfigUi += DrawConfigUI;
+            PluginInterface.UiBuilder.OpenConfigUi += ToggleConfigUI;
+
             Framework.Update += FrameworkOnUpdate;
 
             // lmao
@@ -103,36 +89,28 @@ namespace OofPlugin
             Task.Run(() => OofAudioPolling(CancelToken.Token));
 
         }
-        public void LoadSoundFile()
-        {
-            if (Configuration.DefaultSoundImportPath.Length == 0)
-            {
-                var path = Path.Combine(PluginInterface.AssemblyLocation.Directory?.FullName!, "oof.wav");
-                soundFile = path;
-                return;
-            }
-            soundFile = Configuration.DefaultSoundImportPath;
-        }
+
         private void OnCommand(string command, string args)
         {
             if (command == oofCommand) PlaySound(CancelToken.Token);
-            if (command == oofSettings) PluginUi.SettingsVisible = true;
+            if (command == oofSettings) ToggleConfigUI();
             if (command == oofVideo) OpenVideo();
 
         }
 
-        private void DrawUI()
+        private void DrawUI() => WindowSystem.Draw();
+        public void ToggleConfigUI()
         {
-            PluginUi.Draw();
-        }
-
-        private void DrawConfigUI()
-        {
-            PluginUi.SettingsVisible = true;
+            ConfigWindow.Toggle();
         }
         private void FrameworkOnUpdate(IFramework framework)
         {
             if (ClientState == null || ClientState.LocalPlayer == null) return;
+            // dont run btwn moving areas          
+            if (Condition[ConditionFlag.BetweenAreas] || Condition[ConditionFlag.BetweenAreas51] || Condition[ConditionFlag.BeingMoved]) return;
+            if (Condition[ConditionFlag.WatchingCutscene] || Condition[ConditionFlag.WatchingCutscene78]) return;
+
+
             try
             {
                 if (Configuration.OofOnFall) CheckFallen();
@@ -150,6 +128,7 @@ namespace OofPlugin
         /// </summary>
         private void CheckDeath()
         {
+
             if (!Configuration.OofOnDeathBattle && Condition[ConditionFlag.InCombat]) return;
 
             if (PartyList != null && PartyList.Any())
@@ -164,7 +143,7 @@ namespace OofPlugin
                             if (allianceMemberAddress == IntPtr.Zero) throw new NullReferenceException("allience member address is null");
 
                             var allianceMember = PartyList.CreateAllianceMemberReference(allianceMemberAddress) ?? throw new NullReferenceException("allience reference is null");
-                            OofHelpers.AddRemoveDeadPlayer(allianceMember);
+                            DeadPlayersList.AddRemoveDeadPlayer(allianceMember);
                         }
                     }
                     catch (Exception e)
@@ -176,7 +155,7 @@ namespace OofPlugin
                 {
                     foreach (var member in PartyList)
                     {
-                        OofHelpers.AddRemoveDeadPlayer(member, member.Territory.Id == ClientState!.TerritoryType);
+                        DeadPlayersList.AddRemoveDeadPlayer(member, member.Territory.Id == ClientState.TerritoryType);
                     }
                 }
 
@@ -184,7 +163,7 @@ namespace OofPlugin
             else
             {
                 if (Configuration.OofOnDeathSelf) return;
-                OofHelpers.AddRemoveDeadPlayer(ClientState!.LocalPlayer!);
+                DeadPlayersList.AddRemoveDeadPlayer(ClientState.LocalPlayer!);
             }
 
         }
@@ -194,8 +173,6 @@ namespace OofPlugin
         /// </summary>
         private void CheckFallen()
         {
-            // dont run btwn moving areas & also wont work in combat
-            if (Condition[ConditionFlag.BetweenAreas]) return;
             if (!Configuration.OofOnFallBattle && Condition[ConditionFlag.InCombat]) return;
             if (!Configuration.OofOnFallMounted && (Condition[ConditionFlag.Mounted] || Condition[ConditionFlag.Mounted2])) return;
 
@@ -217,6 +194,18 @@ namespace OofPlugin
             prevVel = velocity;
             wasJumping = isJumping;
         }
+
+        public void LoadSoundFile()
+        {
+            if (Configuration.DefaultSoundImportPath.Length == 0)
+            {
+                var path = Path.Combine(PluginInterface.AssemblyLocation.Directory?.FullName!, "oof.wav");
+                soundFile = path;
+                return;
+            }
+            soundFile = Configuration.DefaultSoundImportPath;
+        }
+
         public void StopSound()
         {
             soundOut?.Pause();
@@ -284,13 +273,7 @@ namespace OofPlugin
             }, token);
         }
 
-        /// <summary>
-        /// open the hbomberguy video on oof
-        /// </summary>
-        public static void OpenVideo()
-        {
-            Util.OpenLink("https://www.youtube.com/watch?v=0twDETh6QaI");
-        }
+
 
         /// <summary>
         /// check deadPlayers every once in a while. prevents multiple oof from playing too fast
@@ -302,9 +285,9 @@ namespace OofPlugin
             {
                 await Task.Delay(200, token);
                 if (token.IsCancellationRequested) break;
-                if (!OofHelpers.DeadPlayers.Any()) continue;
+                if (!DeadPlayersList.DeadPlayers.Any()) continue;
                 if (ClientState!.LocalPlayer! == null) continue;
-                foreach (var player in OofHelpers.DeadPlayers)
+                foreach (var player in DeadPlayersList.DeadPlayers)
                 {
                     if (player.DidPlayOof) continue;
                     float volume = 1f;
@@ -321,11 +304,11 @@ namespace OofPlugin
                 }
             }
         }
-        public float CalcVolumeFromDist(float dist,float distMax = 30)
+        public float CalcVolumeFromDist(float dist, float distMax = 30)
         {
             if (dist > distMax) dist = distMax;
-            var falloff = Configuration.DistanceFalloff > 0 ? 3f - Configuration.DistanceFalloff*3f : 3f - 0.001f;
-            var vol = 1f - ((dist / distMax) *  ( 1 / falloff));
+            var falloff = Configuration.DistanceFalloff > 0 ? 3f - Configuration.DistanceFalloff * 3f : 3f - 0.001f;
+            var vol = 1f - ((dist / distMax) * (1 / falloff));
             return Math.Max(Configuration.DistanceMinVolume, vol);
         }
 
@@ -334,7 +317,7 @@ namespace OofPlugin
             async Task CheckthenPlay(float volume)
             {
                 if (token.IsCancellationRequested) return;
-            
+
                 PlaySound(token, volume);
                 await Task.Delay(500, token);
             }
@@ -345,13 +328,22 @@ namespace OofPlugin
 
         }
 
+        /// <summary>
+        /// open the hbomberguy video on oof
+        /// </summary>
+        public static void OpenVideo()
+        {
+            Util.OpenLink("https://www.youtube.com/watch?v=0twDETh6QaI");
+        }
 
         /// <summary>
         /// dispose
         /// </summary>
         public void Dispose()
         {
-            PluginUi.Dispose();
+            WindowSystem.RemoveAllWindows();
+            ConfigWindow.Dispose();
+
             CommandManager.RemoveHandler(oofCommand);
             CommandManager.RemoveHandler(oofSettings);
             CommandManager.RemoveHandler(oofVideo);

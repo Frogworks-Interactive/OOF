@@ -6,7 +6,7 @@ using System.Numerics;
 
 namespace OofPlugin
 {
-    public class OofHelpers
+    public class DeadPlayersList
     {
         public class DeadPlayer
         {
@@ -33,29 +33,28 @@ namespace OofPlugin
             }
         }
         /// <summary>
-        /// add remove player for Player Character
+        /// add remove player for IPlayer Character
         /// </summary>
         /// <param name="character"></param>
-        public void AddRemoveDeadPlayer(PlayerCharacter character)
+        public void AddRemoveDeadPlayer(IPlayerCharacter character)
         {
             if (character == null) return;
-            var deadPlayer = new DeadPlayer { PlayerId = character.ObjectId };
-            AddRemoveDeadPlayer(deadPlayer, character.CurrentHp, character.ObjectId);
+
+            var deadPlayer = new DeadPlayer { PlayerId = character.DataId };
+            AddRemoveDeadPlayer(deadPlayer, character.CurrentHp, character.DataId);
         }
+
         /// <summary>
         /// add remove player for Party/alliance members
         /// </summary>
         /// <param name="character"></param>
         /// <param name="condition"></param>
-        public void AddRemoveDeadPlayer(PartyMember character, bool condition = true)
+        public void AddRemoveDeadPlayer(IPartyMember character, bool condition = true)
         {
             if (character == null) return;
             var deadPlayer = new DeadPlayer { PlayerId = character.ObjectId, Distance = character.Position };
             AddRemoveDeadPlayer(deadPlayer, character.CurrentHP, character.ObjectId, condition);
         }
-
-
-
 
     }
 }
