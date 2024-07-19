@@ -41,8 +41,8 @@ public sealed class OofPlugin : IDalamudPlugin
         Configuration = pluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
         Configuration.Initialize(pluginInterface);
 
-        SoundManager = new SoundManager(this);
         DeadPlayersList = new DeadPlayersList();
+        SoundManager = new SoundManager(this);
 
 
         ConfigWindow = new ConfigWindow(this);

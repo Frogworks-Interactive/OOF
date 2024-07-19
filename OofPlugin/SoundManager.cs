@@ -1,7 +1,6 @@
 ﻿using NAudio.Wave;
 using System;
 using System.IO;
-using System.Linq;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
@@ -122,7 +121,9 @@ internal class SoundManager : IDisposable
         {
             await Task.Delay(200, token);
             if (token.IsCancellationRequested) break;
-            if (!DeadPlayersList.DeadPlayers.Any()) continue;
+
+            if (DeadPlayersList == null) continue;
+            if (DeadPlayersList.DeadPlayers.Count == 0) continue;
             if (Dalamud.ClientState!.LocalPlayer! == null) continue;
             foreach (var player in DeadPlayersList.DeadPlayers)
             {
@@ -139,7 +140,9 @@ internal class SoundManager : IDisposable
                 break;
 
             }
+
         }
+
     }
     public float VolumeFromDist(float dist, float distMax = 30)
     {

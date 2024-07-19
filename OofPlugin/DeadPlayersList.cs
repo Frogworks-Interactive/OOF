@@ -30,6 +30,7 @@ namespace OofPlugin
             else if (currentHp != 0 && DeadPlayers.Any(x => x.PlayerId == objectId))
             {
                 DeadPlayers.RemoveAll(x => x.PlayerId == objectId);
+
             }
         }
         /// <summary>
@@ -40,8 +41,8 @@ namespace OofPlugin
         {
             if (character == null) return;
 
-            var deadPlayer = new DeadPlayer { PlayerId = character.EntityId };
-            AddRemoveDeadPlayer(deadPlayer, character.CurrentHp, character.EntityId);
+            var deadPlayer = new DeadPlayer { PlayerId = character.DataId };
+            AddRemoveDeadPlayer(deadPlayer, character.CurrentHp, character.DataId);
         }
 
         /// <summary>
