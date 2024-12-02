@@ -135,7 +135,7 @@ public sealed class OofPlugin : IDalamudPlugin
         {
             foreach (var member in Dalamud.PartyList)
             {
-                DeadPlayersList.AddRemoveDeadPlayer(member, member.Territory.Id == Dalamud.ClientState.TerritoryType);
+                DeadPlayersList.AddRemoveDeadPlayer(member, member.Territory.RowId == Dalamud.ClientState.TerritoryType);
             }
         }
     }
