@@ -146,7 +146,7 @@ public sealed class OofPlugin : IDalamudPlugin
     private void CheckFallen()
     {
         if (!Configuration.OofOnFallBattle && Dalamud.Condition[ConditionFlag.InCombat]) return;
-        if (!Configuration.OofOnFallMounted && (Dalamud.Condition[ConditionFlag.Mounted] || Dalamud.Condition[ConditionFlag.Mounted2])) return;
+        if (!Configuration.OofOnFallMounted && (Dalamud.Condition[ConditionFlag.Mounted] || Dalamud.Condition[ConditionFlag.RidingPillion])) return;
 
         var isJumping = Dalamud.Condition[ConditionFlag.Jumping];
         var pos = Dalamud.ClientState!.LocalPlayer!.Position.Y;

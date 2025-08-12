@@ -4,8 +4,8 @@ using Dalamud.Interface.Components;
 using Dalamud.Interface.ImGuiFileDialog;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
-using ImGuiNET;
-using ImPlotNET;
+using Dalamud.Bindings.ImGui;
+using Dalamud.Bindings.ImPlot;
 using System;
 using System.IO;
 using System.Numerics;
@@ -64,7 +64,7 @@ public class ConfigWindow : Window, IDisposable
 
         ImGui.Spacing();
 
-        ImGuiHelpers.SafeTextColoredWrapped(headingColor, "Play sound on");
+        ImGui.TextColoredWrapped(headingColor, "Play sound on");
 
         // when self falls options
         var oofOnFall = Configuration.OofOnFall;
@@ -104,10 +104,10 @@ public class ConfigWindow : Window, IDisposable
         var desc = "Hot Tip: You can Macro the /oofvideo command to\n for easy and streamlined access to this video.";
         if (ImGui.IsItemHovered()) ImGui.SetTooltip(desc);
 
-        ImGuiHelpers.SafeTextColoredWrapped(headingColor, "Learn about the history behind the Roblox Oof with Hbomberguy's Documentary");
+        ImGui.TextColoredWrapped(headingColor, "Learn about the history behind the Roblox Oof with Hbomberguy's Documentary");
 
         ImGui.Spacing();
-        ImGuiHelpers.SafeTextColoredWrapped(headingColor, "Original Oof sound by Joey Kuras");
+        ImGui.TextColoredWrapped(headingColor, "Original Oof sound by Joey Kuras");
 
         ImGui.Spacing();
 
@@ -127,7 +127,7 @@ public class ConfigWindow : Window, IDisposable
 
         ImGui.AlignTextToFramePadding();
 
-        ImGuiHelpers.SafeTextColoredWrapped(headingColor, "Sound file to play");
+        ImGui.TextColoredWrapped(headingColor, "Sound file to play");
         ImGuiComponents.HelpMarker(
            "The audio that is triggered on death/fall damage");
         ImGui.SameLine(ImGui.GetWindowWidth() - UIComponents.CalcButtonSize(em) - windowPadding.X);
@@ -189,7 +189,7 @@ public class ConfigWindow : Window, IDisposable
     private void VolumeControlUI()
     {
         var oofVolume = Configuration.Volume;
-        ImGuiHelpers.SafeTextColoredWrapped(headingColor, "Volume");
+        ImGui.TextColoredWrapped(headingColor, "Volume");
         ImGui.AlignTextToFramePadding();
         UIComponents.ColorIcon(headingColor, FontAwesomeIcon.VolumeMute);
         ImGui.SameLine();
@@ -282,7 +282,7 @@ public class ConfigWindow : Window, IDisposable
             Plugin.SoundManager.Stop();
         }
 
-        ImGuiHelpers.SafeTextColoredWrapped(headingColor, "Lower volume based on how far someone dies from you, from 0 to 30 yalms");
+        ImGui.TextColoredWrapped(headingColor, "Lower volume based on how far someone dies from you, from 0 to 30 yalms");
 
         /// graph
         var steps = 800;
@@ -308,7 +308,7 @@ public class ConfigWindow : Window, IDisposable
             ImPlot.SetupAxisZoomConstraints(ImAxis.X1, 30, 30);
             ImPlot.SetupAxisZoomConstraints(ImAxis.Y1, 1, 1);
             ImPlot.SetupAxesLimits(0, 30, 0, 1);
-            ImPlot.SetupAxes(null, null, ImPlotAxisFlags.None, ImPlotAxisFlags.NoTickLabels);
+            ImPlot.SetupAxes("", "", ImPlotAxisFlags.None, ImPlotAxisFlags.NoTickLabels);
             ImPlot.PopStyleColor();
             ImPlot.SetupFinish();
 
@@ -318,7 +318,7 @@ public class ConfigWindow : Window, IDisposable
         }
         ImGui.Columns(2);
 
-        ImGuiHelpers.SafeTextColoredWrapped(headingColor, "Falloff Intensity");
+        ImGui.TextColoredWrapped(headingColor, "Falloff Intensity");
         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
         var distanceFalloff = Configuration.DistanceFalloff;
         if (ImGui.SliderFloat("###death:distance:falloff", ref distanceFalloff, 0.0f, 1.0f))
@@ -328,7 +328,7 @@ public class ConfigWindow : Window, IDisposable
         }
 
         ImGui.NextColumn();
-        ImGuiHelpers.SafeTextColoredWrapped(headingColor, "Minimum Volume");
+        ImGui.TextColoredWrapped(headingColor, "Minimum Volume");
         var distanceMinVolume = Configuration.DistanceMinVolume;
         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - ImGui.GetStyle().WindowPadding.X);
         if (ImGui.SliderFloat("###death:distance:volume", ref distanceMinVolume, 0.0f, 1.0f))

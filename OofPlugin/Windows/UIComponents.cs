@@ -1,7 +1,7 @@
 ﻿using Dalamud.Interface;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Utility;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
 using System;
 using System.Numerics;
 
@@ -115,7 +115,7 @@ internal class UIComponents
             action1();
         }
         ImGui.SameLine();
-        ImGuiHelpers.SafeTextColoredWrapped(ImGuiColors.DalamudWhite2, title);
+        ImGui.TextColoredWrapped(ImGuiColors.DalamudWhite2, title);
 
         ImGui.SameLine(ImGui.GetWindowWidth() - textSize.X - ImGui.GetFontSize() * 1f - padding.X);
 
@@ -123,7 +123,7 @@ internal class UIComponents
         lowOpacityRed[3] = 30;
         var statusColor = toggle ? ImGuiColors.DalamudGrey2 : lowOpacityRed;
 
-        ImGuiHelpers.SafeTextColoredWrapped(statusColor, $"{text}");
+        ImGui.TextColoredWrapped(statusColor, $"{text}");
         ImGui.SameLine();
 
         ImGui.Spacing();
@@ -135,7 +135,7 @@ internal class UIComponents
     public static void ColorIcon(Vector4 color, FontAwesomeIcon icon)
     {
         ImGui.PushFont(UiBuilder.IconFont);
-        ImGuiHelpers.SafeTextColoredWrapped(color, icon.ToIconString());
+        ImGui.TextColoredWrapped(color, icon.ToIconString());
         ImGui.PopFont();
     }
 
@@ -171,7 +171,7 @@ internal class UIComponents
 
         ImGui.SetCursorPos(cursorPos);
         ImGui.InvisibleButton("###customDraggableText", panelMax - panelMin);
-        if (ImGui.IsItemHovered() && shouldScroll) ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeEW);
+        if (ImGui.IsItemHovered() && shouldScroll) ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeEw);
         var dist = panelMin.X;
 
         if (ImGui.IsItemActive() && shouldScroll)
