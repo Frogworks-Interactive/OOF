@@ -1,4 +1,4 @@
-﻿using Dalamud.Game.ClientState.Conditions;
+using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.Command;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
@@ -6,6 +6,9 @@ using Dalamud.Plugin.Services;
 using Dalamud.Utility;
 using OofPlugin.Windows;
 using System;
+using Dalamud.IoC;
+using Dalamud.Game.ClientState.Objects;
+using Dalamud.Game.ClientState.Objects.SubKinds;
 
 //shoutout anna clemens
 
@@ -18,6 +21,8 @@ public sealed class OofPlugin : IDalamudPlugin
     private const string oofCommand = "/oof";
     private const string oofSettings = "/oofsettings";
     private const string oofVideo = "/oofvideo";
+    
+    [PluginService] private static IObjectTable ObjectTable { get; set; } = null!;
 
     public readonly WindowSystem WindowSystem = new("OofPlugin");
     public Configuration Configuration { get; init; }
@@ -79,7 +84,9 @@ public sealed class OofPlugin : IDalamudPlugin
 
     private void FrameworkOnUpdate(IFramework framework)
     {
-        if (Dalamud.ClientState == null || Dalamud.ClientState.LocalPlayer == null) return;
+        var localPlayer = ObjectTable.LocalPlayer as IPlayerCharacter;
+        if (localPlayer is null)
+        return;
         // dont run btwn moving areas          
         if (Dalamud.Condition[ConditionFlag.BetweenAreas] || Dalamud.Condition[ConditionFlag.BetweenAreas51] || Dalamud.Condition[ConditionFlag.BeingMoved]) return;
         if (Dalamud.Condition[ConditionFlag.WatchingCutscene] || Dalamud.Condition[ConditionFlag.WatchingCutscene78]) return;
@@ -87,8 +94,8 @@ public sealed class OofPlugin : IDalamudPlugin
 
         try
         {
-            if (Configuration.OofOnFall) CheckFallen();
-            if (Configuration.OofOnDeath) CheckDeath();
+            if (Configuration.OofOnFall) CheckFallen(localPlayer);
+            if (Configuration.OofOnDeath) CheckDeath(localPlayer);
         }
         catch (Exception e)
         {
@@ -100,7 +107,7 @@ public sealed class OofPlugin : IDalamudPlugin
     /// check if player has died during alliance, party, and self.
     /// this may be the worst if statement chain i have made
     /// </summary>
-    private void CheckDeath()
+    private void CheckDeath(IPlayerCharacter localPlayer)
     {
 
         if (!Configuration.OofOnDeathBattle && Dalamud.Condition[ConditionFlag.InCombat]) return;
@@ -108,7 +115,7 @@ public sealed class OofPlugin : IDalamudPlugin
         // if not in party
         if (Configuration.OofOnDeathSelf && (Dalamud.PartyList == null || Dalamud.PartyList.Length == 0))
         {
-            DeadPlayersList.AddRemoveDeadPlayer(Dalamud.ClientState.LocalPlayer!);
+            DeadPlayersList.AddRemoveDeadPlayer(localPlayer);
             return;
         }
         // if in alliance
@@ -143,13 +150,13 @@ public sealed class OofPlugin : IDalamudPlugin
     /// <summary>
     /// check if player has taken fall damage (brute force way)
     /// </summary>
-    private void CheckFallen()
+    private void CheckFallen(IPlayerCharacter localPlayer)
     {
         if (!Configuration.OofOnFallBattle && Dalamud.Condition[ConditionFlag.InCombat]) return;
         if (!Configuration.OofOnFallMounted && (Dalamud.Condition[ConditionFlag.Mounted] || Dalamud.Condition[ConditionFlag.RidingPillion])) return;
 
         var isJumping = Dalamud.Condition[ConditionFlag.Jumping];
-        var pos = Dalamud.ClientState!.LocalPlayer!.Position.Y;
+        var pos = localPlayer.Position.Y;
         var velocity = prevPos - pos;
 
         if (isJumping && !wasJumping)
