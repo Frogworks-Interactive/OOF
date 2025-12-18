@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Dalamud.NET.Sdk/14.0.0">
 	<PropertyGroup>
 		<Authors>Frogworks Interactive</Authors>
@@ -23,7 +23,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Update="DalamudPackager" Version="13.0.0" />
+		<PackageReference Update="DalamudPackager" Version="14.0.0" />
 		<PackageReference Include="NAudio.Core" Version="2.2.1" />
 		<PackageReference Include="NAudio.Wasapi" Version="2.2.1" />		
 	</ItemGroup>
