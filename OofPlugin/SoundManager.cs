@@ -1,197 +1,162 @@
-using Dalamud.Game.ClientState.Conditions;
-using Dalamud.Game.Command;
-using Dalamud.Interface.Windowing;
-using Dalamud.Plugin;
-using Dalamud.Plugin.Services;
-using Dalamud.Utility;
-using OofPlugin.Windows;
+using NAudio.Wave;
 using System;
+using System.IO;
+using System.Numerics;
+using System.Threading;
+using System.Threading.Tasks;
+using Dalamud.IoC;
+using Dalamud.Plugin.Services;
 using Dalamud.Game.ClientState.Objects;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 
-// shoutout anna clemens
-
 namespace OofPlugin;
 
-public sealed class OofPlugin : IDalamudPlugin {
-  public string Name => "OOF";
+internal class SoundManager : IDisposable {
+  private readonly Configuration Configuration;
+  private readonly DeadPlayersList DeadPlayersList;
 
-  private const string oofCommand = "/oof";
-  private const string oofSettings = "/oofsettings";
-  private const string oofVideo = "/oofvideo";
+  // sound
+  public bool isSoundPlaying { get; private set; } = false;
+  private DirectSoundOut? soundOut;
+  private string? soundFile;
 
-  public readonly WindowSystem WindowSystem = new("OofPlugin");
-  public Configuration Configuration { get; init; }
-  private ConfigWindow ConfigWindow { get; init; }
-  internal DeadPlayersList DeadPlayersList { get; init; }
-  internal SoundManager SoundManager { get; init; }
+  internal CancellationTokenSource CancelToken;
 
-  // i love global variables!!!! the more global the more globaly it gets
+  public SoundManager(OofPlugin plugin) {
+    Configuration = plugin.Configuration;
+    DeadPlayersList = plugin.DeadPlayersList;
 
-  // check for fall
-  private float prevPos { get; set; } = 0;
-  private float prevVel { get; set; } = 0;
-  private float distJump { get; set; } = 0;
-  private bool wasJumping { get; set; } = false;
+    LoadFile();
 
-  public OofPlugin(IDalamudPluginInterface pluginInterface) {
-    Dalamud.Initialize(pluginInterface);
-
-    Configuration = pluginInterface.GetPluginConfig() as Configuration ??
-                    new Configuration();
-    Configuration.Initialize(pluginInterface);
-
-    DeadPlayersList = new DeadPlayersList();
-    SoundManager = new SoundManager(this);
-
-    ConfigWindow = new ConfigWindow(this);
-    WindowSystem.AddWindow(ConfigWindow);
-
-    Dalamud.PluginInterface.UiBuilder.Draw += DrawUI;
-    Dalamud.PluginInterface.UiBuilder.OpenConfigUi += ToggleConfigUI;
-    Dalamud.Framework.Update += FrameworkOnUpdate;
-
-    Dalamud.CommandManager.AddHandler(
-        oofCommand,
-        new CommandInfo(OnCommand) { HelpMessage = "play oof sound" });
-    Dalamud.CommandManager.AddHandler(
-        oofSettings,
-        new CommandInfo(OnCommand) { HelpMessage = "change oof settings" });
-    Dalamud.CommandManager.AddHandler(oofVideo, new CommandInfo(OnCommand) {
-      HelpMessage = "open Hbomberguy video on OOF.mp3"
-    });
+    CancelToken = new CancellationTokenSource();
+    Task.Run(() => OofAudioPolling(CancelToken.Token));
   }
 
-  private void DrawUI() => WindowSystem.Draw();
-  public void ToggleConfigUI() => ConfigWindow.Toggle();
-  private void OnCommand(string command, string args) {
-    if (command == oofCommand)
-      SoundManager.Play(SoundManager.CancelToken.Token);
-    if (command == oofSettings)
-      ToggleConfigUI();
-    if (command == oofVideo)
-      OpenVideo();
-  }
-
-  private void FrameworkOnUpdate(IFramework framework) {
-    var localPlayer = Dalamud.ClientState.LocalPlayer;
-    if (localPlayer is null)
-      return;
-
-    // dont run between moving areas / cutscenes / forced movement
-    if (Dalamud.Condition[ConditionFlag.BetweenAreas] ||
-        Dalamud.Condition[ConditionFlag.BetweenAreas51] ||
-        Dalamud.Condition[ConditionFlag.BeingMoved])
-      return;
-
-    if (Dalamud.Condition[ConditionFlag.WatchingCutscene] ||
-        Dalamud.Condition[ConditionFlag.WatchingCutscene78])
-      return;
-
-    try {
-      if (Configuration.OofOnFall)
-        CheckFallen(localPlayer);
-
-      if (Configuration.OofOnDeath)
-        CheckDeath(localPlayer);
-    } catch (Exception e) {
-      Dalamud.Log.Error($"failed to check for oof condition: {e}");
-    }
-  }
-
-  /// <summary>
-  /// check if player has died during alliance, party, and self.
-  /// this may be the worst if statement chain i have made
-  /// </summary>
-  private void CheckDeath(IPlayerCharacter localPlayer) {
-    if (!Configuration.OofOnDeathBattle &&
-        Dalamud.Condition[ConditionFlag.InCombat])
-      return;
-
-    if (Configuration.OofOnDeathSelf &&
-        (Dalamud.PartyList == null || Dalamud.PartyList.Length == 0)) {
-      DeadPlayersList.AddRemoveDeadPlayer(localPlayer);
+  public void LoadFile() {
+    if (string.IsNullOrEmpty(Configuration.DefaultSoundImportPath)) {
+      soundFile = Path.Combine(
+          Dalamud.PluginInterface.AssemblyLocation.Directory!.FullName,
+          "oof.wav");
       return;
     }
-    // if in alliance
-    if (Configuration.OofOnDeathAlliance && Dalamud.PartyList.Length == 8 &&
-        Dalamud.PartyList.GetAllianceMemberAddress(0) !=
-            IntPtr.Zero)  // the worst "is alliance" check
-    {
+
+    soundFile = Configuration.DefaultSoundImportPath;
+  }
+
+  public void Stop() {
+    soundOut?.Pause();
+    soundOut?.Dispose();
+    soundOut = null;
+  }
+
+  public void Play(CancellationToken token, float volume = 1f) {
+    Task.Run(() => {
+      isSoundPlaying = true;
+
+      WaveStream reader;
       try {
-        for (int i = 0; i < 16; i++) {
-          var allianceMemberAddress =
-              Dalamud.PartyList.GetAllianceMemberAddress(i);
-          if (allianceMemberAddress == IntPtr.Zero)
-            throw new NullReferenceException("allience member address is null");
+        reader = new MediaFoundationReader(soundFile);
+      } catch (Exception ex) {
+        isSoundPlaying = false;
+        Dalamud.Log.Error("Failed to read sound file", ex);
+        return;
+      }
 
-          var allianceMember =
-              Dalamud.PartyList.CreateAllianceMemberReference(
-                  allianceMemberAddress) ??
-              throw new NullReferenceException("allience reference is null");
-          DeadPlayersList.AddRemoveDeadPlayer(allianceMember);
+      var audioStream =
+          new WaveChannel32(reader) { Volume = Configuration.Volume * volume,
+                                      PadWithZeroes = false };
+
+      using (reader) {
+        soundOut?.Dispose();
+        soundOut = new DirectSoundOut();
+
+        try {
+          soundOut.Init(audioStream);
+          soundOut.Play();
+
+          soundOut.PlaybackStopped += (_, _) => { isSoundPlaying = false; };
+        } catch (Exception ex) {
+          isSoundPlaying = false;
+          Dalamud.Log.Error("Failed to play sound", ex);
         }
-      } catch (Exception e) {
-        Dalamud.Log.Error("failed alliance check", e.Message);
+      }
+    }, token);
+  }
+
+  private async Task OofAudioPolling(CancellationToken token) {
+    while (!token.IsCancellationRequested) {
+      try {
+        await Task.Delay(200, token);
+
+        if (DeadPlayersList == null || DeadPlayersList.DeadPlayers.Count == 0)
+          continue;
+
+        // Run on framework thread AND await it so exceptions are observed
+        await Dalamud.Framework.RunOnFrameworkThread(() => {
+          var localPlayer =
+              OofPlugin.ObjectTable.LocalPlayer as IPlayerCharacter;
+          if (localPlayer is null)
+            return;
+
+          foreach (var player in DeadPlayersList.DeadPlayers) {
+            if (player.DidPlayOof)
+              continue;
+
+            float volume = 1f;
+
+            if (Configuration.DistanceBasedOof &&
+                player.Distance != Vector3.Zero) {
+              var dist =
+                  Vector3.Distance(localPlayer.Position, player.Distance);
+              volume = VolumeFromDist(dist);
+            }
+
+            Play(token, volume);
+            player.DidPlayOof = true;
+            break;
+          }
+        });
+      } catch (OperationCanceledException) {
+        // normal shutdown
+        break;
+      } catch (Exception ex) {
+        Dalamud.Log.Error(ex, "OOF: OofAudioPolling crashed");
+        // keep loop alive instead of dying forever
       }
     }
-    // if in party
-    if (Configuration.OofOnDeathParty) {
-      foreach (var member in Dalamud.PartyList) {
-        DeadPlayersList.AddRemoveDeadPlayer(
-            member,
-            member.Territory.RowId == Dalamud.ClientState.TerritoryType);
-      }
-    }
   }
 
-  /// <summary>
-  /// </summary>
-  private void CheckFallen(IPlayerCharacter localPlayer) {
-    if (!Configuration.OofOnFallBattle &&
-        Dalamud.Condition[ConditionFlag.InCombat])
-      return;
-    if (!Configuration.OofOnFallMounted &&
-        (Dalamud.Condition[ConditionFlag.Mounted] ||
-         Dalamud.Condition[ConditionFlag.RidingPillion]))
-      return;
+  public float VolumeFromDist(float dist, float distMax = 30f) {
+    dist = Math.Min(dist, distMax);
 
-    var isJumping = Dalamud.Condition[ConditionFlag.Jumping];
-    var pos = localPlayer.Position.Y;
-    var velocity = prevPos - pos;
+    var falloff = Configuration.DistanceFalloff > 0
+                      ? 3f - Configuration.DistanceFalloff * 3f
+                      : 2.999f;
 
-    if (isJumping && !wasJumping) {
-      if (prevVel < 0.17f)
-        distJump = pos;
-    } else if (wasJumping && !isJumping) {
-      if (distJump - pos > 9.60f)
-        SoundManager.Play(SoundManager.CancelToken.Token);
+    var vol = 1f - ((dist / distMax) * (1f / falloff));
+    return Math.Max(Configuration.DistanceMinVolume, vol);
+  }
+
+  public async Task TestDistanceAudio(CancellationToken token) {
+    async Task PlayTest(float volume) {
+      if (token.IsCancellationRequested)
+        return;
+
+      Play(token, volume);
+      await Task.Delay(700, token);
     }
 
-    prevPos = pos;
-    prevVel = velocity;
-    wasJumping = isJumping;
+    await PlayTest(VolumeFromDist(0));
+    await PlayTest(VolumeFromDist(10));
+    await PlayTest(VolumeFromDist(20));
+    await PlayTest(VolumeFromDist(30));
   }
 
-  /// <summary>
-  /// open the hbomberguy video on oof
-  /// </summary>
-  public static void OpenVideo() {
-    Util.OpenLink("https://www.youtube.com/watch?v=0twDETh6QaI");
-  }
-
-  /// <summary>
-  /// dispose
-  /// </summary>
   public void Dispose() {
-    WindowSystem.RemoveAllWindows();
-    ConfigWindow.Dispose();
-    SoundManager.Dispose();
+    CancelToken.Cancel();
+    CancelToken.Dispose();
 
-    Dalamud.CommandManager.RemoveHandler(oofCommand);
-    Dalamud.CommandManager.RemoveHandler(oofSettings);
-    Dalamud.CommandManager.RemoveHandler(oofVideo);
-
-    Dalamud.Framework.Update -= FrameworkOnUpdate;
+    soundOut?.Dispose();
+    soundOut = null;
   }
 }
