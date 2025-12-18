@@ -15,53 +15,32 @@ namespace OofPlugin
             public Vector3 Distance = Vector3.Zero;
         }
 
-        public List<DeadPlayer> DeadPlayers { get; set; } = new List<DeadPlayer>();
+        public List<DeadPlayer> DeadPlayers { get; set; } = new();
 
-        /// <summary>
-        /// Handle Player death, and add distance if true
-        /// </summary>
-        /// <param name="deadPlayer">dead player (unused, but keeping signature)</param>
-        /// <param name="currentHp">hp</param>
-        /// <param name="objectId">player id</param>
-        /// <param name="condition">extra condition</param>
-        private void AddRemoveDeadPlayer(DeadPlayer deadPlayer, uint currentHp, uint objectId, bool condition = true)
+        private void AddRemoveDeadPlayer(uint currentHp, uint entityId, Vector3 pos, bool condition = true)
         {
-            if (currentHp == 0 && !DeadPlayers.Any(x => x.PlayerId == objectId) && condition)
+            if (!condition) return;
+
+            if (currentHp == 0 && !DeadPlayers.Any(x => x.PlayerId == entityId))
             {
-                DeadPlayers.Add(new DeadPlayer { PlayerId = objectId });
+                DeadPlayers.Add(new DeadPlayer { PlayerId = entityId, Distance = pos });
             }
-            else if (currentHp != 0 && DeadPlayers.Any(x => x.PlayerId == objectId))
+            else if (currentHp != 0 && DeadPlayers.Any(x => x.PlayerId == entityId))
             {
-                DeadPlayers.RemoveAll(x => x.PlayerId == objectId);
+                DeadPlayers.RemoveAll(x => x.PlayerId == entityId);
             }
         }
 
-        /// <summary>
-        /// add remove player for IPlayerCharacter
-        /// </summary>
         public void AddRemoveDeadPlayer(IPlayerCharacter character)
         {
             if (character == null) return;
-
-            // DataId -> BaseId
-            var id = character.BaseId;
-            var deadPlayer = new DeadPlayer { PlayerId = id };
-
-            AddRemoveDeadPlayer(deadPlayer, character.CurrentHp, id);
+            AddRemoveDeadPlayer(character.CurrentHp, character.EntityId, character.Position, true);
         }
 
-        /// <summary>
-        /// add remove player for Party/alliance members
-        /// </summary>
         public void AddRemoveDeadPlayer(IPartyMember character, bool condition = true)
         {
             if (character == null) return;
-
-            // ObjectId -> EntityId
-            var id = character.EntityId;
-            var deadPlayer = new DeadPlayer { PlayerId = id, Distance = character.Position };
-
-            AddRemoveDeadPlayer(deadPlayer, character.CurrentHP, id, condition);
+            AddRemoveDeadPlayer(character.CurrentHP, character.EntityId, character.Position, condition);
         }
     }
 }
