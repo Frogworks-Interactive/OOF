@@ -1,4 +1,4 @@
-﻿using NAudio.Wave;
+using NAudio.Wave;
 using System;
 using System.IO;
 using System.Numerics;
@@ -7,189 +7,158 @@ using System.Threading.Tasks;
 
 namespace OofPlugin;
 
-internal class SoundManager : IDisposable
-{
-    Configuration Configuration { get; set; }
+internal class SoundManager : IDisposable {
+  private readonly Configuration Configuration;
+  private readonly DeadPlayersList DeadPlayersList;
 
-    DeadPlayersList DeadPlayersList { get; init; }
+  // sound
+  public bool isSoundPlaying { get; private set; } = false;
+  private DirectSoundOut? soundOut;
+  private string? soundFile;
 
-    // sound
-    public bool isSoundPlaying { get; set; } = false;
-    private DirectSoundOut? soundOut;
-    private string? soundFile { get; set; }
+  internal CancellationTokenSource CancelToken;
 
-    internal CancellationTokenSource CancelToken;
+  public SoundManager(OofPlugin plugin) {
+    Configuration = plugin.Configuration;
+    DeadPlayersList = plugin.DeadPlayersList;
 
-    public SoundManager(OofPlugin plugin)
-    {
-        Configuration = plugin.Configuration;
-        DeadPlayersList = plugin.DeadPlayersList;
-        LoadFile();
+    LoadFile();
 
-        // lmao
-        CancelToken = new CancellationTokenSource();
-        Task.Run(() => OofAudioPolling(CancelToken.Token));
+    CancelToken = new CancellationTokenSource();
+    Task.Run(() => OofAudioPolling(CancelToken.Token));
+  }
 
-    }
-    public void LoadFile()
-    {
-        if (Configuration.DefaultSoundImportPath.Length == 0)
-        {
-            var path = Path.Combine(Dalamud.PluginInterface.AssemblyLocation.Directory?.FullName!, "oof.wav");
-            soundFile = path;
-            return;
-        }
-        soundFile = Configuration.DefaultSoundImportPath;
+  public void LoadFile() {
+    if (string.IsNullOrEmpty(Configuration.DefaultSoundImportPath)) {
+      soundFile = Path.Combine(
+          Dalamud.PluginInterface.AssemblyLocation.Directory!.FullName,
+          "oof.wav");
+      return;
     }
 
-    public void Stop()
-    {
-        soundOut?.Pause();
+    soundFile = Configuration.DefaultSoundImportPath;
+  }
+
+  public void Stop() {
+    soundOut?.Pause();
+    soundOut?.Dispose();
+    soundOut = null;
+  }
+
+  public void Play(CancellationToken token, float volume = 1f) {
+    Task.Run(() => {
+      isSoundPlaying = true;
+
+      WaveStream reader;
+      try {
+        reader = new MediaFoundationReader(soundFile);
+      }
+      catch (Exception ex) {
+        isSoundPlaying = false;
+        Dalamud.Log.Error("Failed to read sound file", ex);
+        return;
+      }
+
+      var audioStream =
+          new WaveChannel32(reader) {
+            Volume = Configuration.Volume * volume,
+            PadWithZeroes = false // you need this or else playbackstopped event will not fire
+          };
+
+      using (reader) {
         soundOut?.Dispose();
+        soundOut = new DirectSoundOut();
 
-    }
-    /// <summary>
-    /// Play sound but without referencing windows.forms.
-    /// much of the code from: https://github.com/kalilistic/Tippy/blob/5c18d6b21461b0bbe4583a86787ef4a3565e5ce6/src/Tippy/Tippy/Logic/TippyController.cs#L11
-    /// </summary>
-    /// <param name="token">cancellation token</param>
-    /// <param name="volume">optional volume param</param>
-    public void Play(CancellationToken token, float volume = 1)
-    {
-        Task.Run(() =>
-        {
-            isSoundPlaying = true;
-            WaveStream reader;
-            try
-            {
-                reader = new MediaFoundationReader(soundFile);
-            }
-            catch (Exception ex)
-            {
-                isSoundPlaying = false;
-                Dalamud.Log.Error("Failed read file", ex);
-                return;
-            }
+        try {
+          soundOut.Init(audioStream);
+          soundOut.Play();
 
-            var audioStream = new WaveChannel32(reader)
-            {
-                Volume = Configuration.Volume * volume,
-                PadWithZeroes = false // you need this or else playbackstopped event will not fire
-            };
-            using (reader)
-            {
-                if (isSoundPlaying && soundOut != null)
-                {
-                    soundOut.Pause();
-                    soundOut.Dispose();
-                };
-                //shoutout anna clemens for the winforms fix
-                soundOut = new DirectSoundOut();
-
-                try
-                {
-                    soundOut.Init(audioStream);
-                    soundOut.Play();
-                    soundOut.PlaybackStopped += OnPlaybackStopped;
-                    // run after sound has played. does this work? i have no idea
-                    void OnPlaybackStopped(object? sender, StoppedEventArgs e)
-                    {
-                        soundOut.PlaybackStopped -= OnPlaybackStopped;
-                        isSoundPlaying = false;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    isSoundPlaying = false;
-                    Dalamud.Log.Error("Failed play sound", ex);
-                    return;
-                }
-            }
-
-        }, token);
-    }
-
-
-
-    /// <summary>
-    /// check deadPlayers every once in a while. prevents multiple oof from playing too fast
-    /// </summary>
-    /// <param name="token"> cancellation token</param>
-    private async Task OofAudioPolling(CancellationToken token)
-    {
-        while (true)
-        {
-            await Task.Delay(200, token);
-            if (token.IsCancellationRequested) break;
-
-            if (DeadPlayersList == null) continue;
-            if (DeadPlayersList.DeadPlayers.Count == 0) continue;
-            // Run the rest of the function on the main game thread because we can't access the ClientState from a different thread anymore
-            _ = Dalamud.Framework.RunOnFrameworkThread(() =>
-            {
-                if (Dalamud.ClientState!.LocalPlayer == null) return;
-                foreach (var player in DeadPlayersList.DeadPlayers)
-                {
-                    if (player.DidPlayOof) continue;
-                    float volume = 1f;
-                    if (Configuration.DistanceBasedOof && player.Distance != Dalamud.ClientState.LocalPlayer.Position)
-                    {
-                        var dist = 0f;
-                        if (player.Distance != Vector3.Zero)
-                            dist = Vector3.Distance(Dalamud.ClientState.LocalPlayer.Position, player.Distance);
-                        volume = VolumeFromDist(dist);
-                    }
-                    Play(token, volume);
-                    player.DidPlayOof = true;
-                    break;
-                }
-            });
+          soundOut.PlaybackStopped += (_, _) => { isSoundPlaying = false; };
         }
+        catch (Exception ex) {
+          isSoundPlaying = false;
+          Dalamud.Log.Error("Failed to play sound", ex);
+        }
+      }
+    }, token);
+  }
 
-    }
-    public float VolumeFromDist(float dist, float distMax = 30)
-    {
-        if (dist > distMax) dist = distMax;
-        var falloff = Configuration.DistanceFalloff > 0 ? 3f - Configuration.DistanceFalloff * 3f : 3f - 0.001f;
-        var vol = 1f - ((dist / distMax) * (1 / falloff));
-        return Math.Max(Configuration.DistanceMinVolume, vol);
-    }
-    public async Task TestDistanceAudio(CancellationToken token)
-    {
-        async Task CheckthenPlay(float volume)
-        {
-            if (token.IsCancellationRequested) return;
+  private async Task OofAudioPolling(CancellationToken token) {
+    while (!token.IsCancellationRequested) {
+      try {
+        await Task.Delay(200, token);
+
+        if (DeadPlayersList == null || DeadPlayersList.DeadPlayers.Count == 0)
+          continue;
+
+        // Run on framework thread AND await it so exceptions are observed
+        await Dalamud.Framework.RunOnFrameworkThread(() => {
+          var localPlayer =
+              Dalamud.ObjectTable.LocalPlayer;
+          if (localPlayer is null)
+            return;
+
+          foreach (var player in DeadPlayersList.DeadPlayers) {
+            if (player.DidPlayOof)
+              continue;
+
+            float volume = 1f;
+
+            if (Configuration.DistanceBasedOof &&
+                player.Distance != Vector3.Zero) {
+              var dist =
+                  Vector3.Distance(localPlayer.Position, player.Distance);
+              volume = VolumeFromDist(dist);
+            }
 
             Play(token, volume);
-            await Task.Delay(700, token);
-        }
-        await CheckthenPlay(VolumeFromDist(0));
-        await CheckthenPlay(VolumeFromDist(10));
-        await CheckthenPlay(VolumeFromDist(20));
-        await CheckthenPlay(VolumeFromDist(30));
+            player.DidPlayOof = true;
+            break;
+          }
+        });
+      }
+      catch (OperationCanceledException) {
+        // normal shutdown
+        break;
+      }
+      catch (Exception ex) {
+        Dalamud.Log.Error(ex, "OOF: OofAudioPolling crashed");
+        // keep loop alive instead of dying forever
+      }
+    }
+  }
 
+  public float VolumeFromDist(float dist, float distMax = 30f) {
+    dist = Math.Min(dist, distMax);
+
+    var falloff = Configuration.DistanceFalloff > 0
+                      ? 3f - Configuration.DistanceFalloff * 3f
+                      : 2.999f;
+
+    var vol = 1f - ((dist / distMax) * (1f / falloff));
+    return Math.Max(Configuration.DistanceMinVolume, vol);
+  }
+
+  public async Task TestDistanceAudio(CancellationToken token) {
+    async Task PlayTest(float volume) {
+      if (token.IsCancellationRequested)
+        return;
+
+      Play(token, volume);
+      await Task.Delay(700, token);
     }
 
-    public void Dispose()
-    {
-        CancelToken.Cancel();
-        CancelToken.Dispose();
+    await PlayTest(VolumeFromDist(0));
+    await PlayTest(VolumeFromDist(10));
+    await PlayTest(VolumeFromDist(20));
+    await PlayTest(VolumeFromDist(30));
+  }
 
-        try
-        {
-            while (isSoundPlaying)
-            {
-                Thread.Sleep(100);
-                soundOut?.Pause();
-                isSoundPlaying = false;
+  public void Dispose() {
+    CancelToken.Cancel();
+    CancelToken.Dispose();
 
-            }
-            soundOut?.Dispose();
-        }
-        catch (Exception e)
-        {
-            Dalamud.Log.Error("Failed to dispose oofplugin controller", e.Message);
-        }
-    }
+    soundOut?.Dispose();
+    soundOut = null;
+  }
 }
-

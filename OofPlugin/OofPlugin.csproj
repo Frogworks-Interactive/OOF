@@ -1,5 +1,5 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<Project Sdk="Dalamud.NET.Sdk/13.0.0">
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Dalamud.NET.Sdk/14.0.1">
 	<PropertyGroup>
 		<Authors>Frogworks Interactive</Authors>
 		<Version>1.3.5.0</Version>
@@ -8,7 +8,7 @@
 		<Description>OOF!</Description>
 		<Copyright></Copyright>
 		<PackageProjectUrl>https://github.com/Frogworks-Interactive/OOF</PackageProjectUrl>
-		<TargetFramework>net9.0-windows</TargetFramework>
+		<TargetFramework>net10.0-windows</TargetFramework>
 		<Platforms>x64;AnyCPU</Platforms>
    </PropertyGroup>
 	<ItemGroup>
@@ -23,7 +23,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Update="DalamudPackager" Version="13.0.0" />
+		<PackageReference Update="DalamudPackager" Version="14.0.0" />
 		<PackageReference Include="NAudio.Core" Version="2.2.1" />
 		<PackageReference Include="NAudio.Wasapi" Version="2.2.1" />		
 	</ItemGroup>
