@@ -65,11 +65,11 @@ public sealed class OofPlugin : IDalamudPlugin {
   private void DrawUI() => WindowSystem.Draw();
   public void ToggleConfigUI() => ConfigWindow.Toggle();
   private void OnCommand(string command, string args) {
-    if (command == oofCommand) 
+    if (command == oofCommand)
       SoundManager.Play(SoundManager.CancelToken.Token);
-    if (command == oofSettings) 
+    if (command == oofSettings)
       ToggleConfigUI();
-    if (command == oofVideo) 
+    if (command == oofVideo)
       OpenVideo();
   }
 

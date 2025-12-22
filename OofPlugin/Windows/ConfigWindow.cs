@@ -1,358 +1,326 @@
-﻿using Dalamud.Interface;
+﻿using Dalamud.Bindings.ImGui;
+using Dalamud.Bindings.ImPlot;
+using Dalamud.Interface;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.Components;
 using Dalamud.Interface.ImGuiFileDialog;
-using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
-using Dalamud.Bindings.ImGui;
-using Dalamud.Bindings.ImPlot;
 using System;
 using System.IO;
 using System.Numerics;
 
 namespace OofPlugin.Windows;
 
-public class ConfigWindow : Window, IDisposable
-{
-    private Configuration Configuration;
-    private OofPlugin Plugin;
+public class ConfigWindow : Window, IDisposable {
+  private Configuration Configuration;
+  private OofPlugin Plugin;
 
-    private UIComponents components;
-    private FileDialogManager fileDialogManager { get; }
+  private UIComponents components;
+  private FileDialogManager fileDialogManager { get; }
 
-    private float fallOptionsHeight = 0;
-    private float deathOptionsHeight = 0;
+  private float fallOptionsHeight = 0;
+  private float deathOptionsHeight = 0;
 
-    Vector4 headingColor = ImGuiColors.DalamudGrey;
+  Vector4 headingColor = ImGuiColors.DalamudGrey;
 
 
-    // We give this window a constant ID using ###
-    // This allows for labels being dynamic, like "{FPS Counter}fps###XYZ counter window",
-    // and the window ID will always be "###XYZ counter window" for ImGui
-    public ConfigWindow(OofPlugin plugin) : base("oof options###OofPlugin:Window:Config")
-    {
-        Flags = ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse;
+  // We give this window a constant ID using ###
+  // This allows for labels being dynamic, like "{FPS Counter}fps###XYZ counter window",
+  // and the window ID will always be "###XYZ counter window" for ImGui
+  public ConfigWindow(OofPlugin plugin) : base("oof options###OofPlugin:Window:Config") {
+    Flags = ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse;
 
-        Size = new Vector2(355, 720);
-        SizeCondition = ImGuiCond.Always;
+    Size = new Vector2(355, 720);
+    SizeCondition = ImGuiCond.Always;
 
-        Plugin = plugin;
-        Configuration = plugin.Configuration;
-        components = new UIComponents(plugin);
+    Plugin = plugin;
+    Configuration = plugin.Configuration;
+    components = new UIComponents(plugin);
 
-        fileDialogManager = new FileDialogManager
-        {
-            AddedWindowFlags = ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoDocking,
-        };
+    fileDialogManager = new FileDialogManager {
+      AddedWindowFlags = ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoDocking,
+    };
+  }
+
+  public void Dispose() { }
+
+  public override void PreDraw() { }
+
+  public override void Draw() {
+    // i miss html/css
+
+    AddLoadAudioUI();
+
+    VolumeControlUI();
+
+    ImGui.Spacing();
+    ImGui.Spacing();
+    ImGui.Spacing();
+
+    ImGui.Spacing();
+
+    ImGui.TextColoredWrapped(headingColor, "Play sound on");
+
+    // when self falls options
+    var oofOnFall = Configuration.OofOnFall;
+    UIComponents.SectionStart(fallOptionsHeight);
+    UIComponents.SectionHeader("Fall damage (self only)", ref oofOnFall, () => {
+      Configuration.OofOnFall = oofOnFall;
+      Configuration.Save();
+    });
+    if (!oofOnFall) ImGui.BeginDisabled();
+
+    OnFallConfigUI();
+
+    if (!oofOnFall) ImGui.EndDisabled();
+
+    UIComponents.SectionEnd(ref fallOptionsHeight, oofOnFall ? ImGuiCol.PopupBg : ImGuiCol.TitleBg);
+    ImGui.Spacing();
+    // when people die options
+    UIComponents.SectionStart(deathOptionsHeight);
+
+    var oofOnDeath = Configuration.OofOnDeath;
+
+    UIComponents.SectionHeader("Death", ref oofOnDeath, () => { Configuration.OofOnDeath = oofOnDeath; Configuration.Save(); });
+    if (!oofOnDeath) ImGui.BeginDisabled();
+
+    OnDeathConfigUI();
+
+    if (!oofOnDeath) ImGui.EndDisabled();
+
+    UIComponents.SectionEnd(ref deathOptionsHeight, oofOnDeath ? ImGuiCol.PopupBg : ImGuiCol.TitleBg);
+
+    ImGui.Spacing();
+    ImGui.Spacing();
+    ImGui.Spacing();
+    /// watch video! --------
+    if (ImGuiComponents.IconButtonWithText(FontAwesomeIcon.ExternalLinkSquareAlt, "Watch on Youtube")) OofPlugin.OpenVideo();
+    var desc = "Hot Tip: You can Macro the /oofvideo command to\n for easy and streamlined access to this video.";
+    if (ImGui.IsItemHovered()) ImGui.SetTooltip(desc);
+
+    ImGui.TextColoredWrapped(headingColor, "Learn about the history behind the Roblox Oof with Hbomberguy's Documentary");
+
+    ImGui.Spacing();
+    ImGui.TextColoredWrapped(headingColor, "Original Oof sound by Joey Kuras");
+
+    ImGui.Spacing();
+
+
+    fileDialogManager.Draw();
+  }
+
+  /// <summary>
+  /// load audio interface
+  /// </summary>
+  private void AddLoadAudioUI() {
+    var WindowPos = ImGui.GetWindowPos();
+    var windowPadding = ImGui.GetStyle().WindowPadding;
+    var em = ImGui.GetFontSize();
+    var draw = ImGui.GetWindowDrawList();
+
+    ImGui.AlignTextToFramePadding();
+
+    ImGui.TextColoredWrapped(headingColor, "Sound file to play");
+    ImGuiComponents.HelpMarker(
+       "The audio that is triggered on death/fall damage");
+    ImGui.SameLine(ImGui.GetWindowWidth() - UIComponents.CalcButtonSize(em) - windowPadding.X);
+    if (ImGuiComponents.IconButton(FontAwesomeIcon.UndoAlt)) {
+      Configuration.DefaultSoundImportPath = string.Empty;
+      Configuration.Save();
+      Plugin.SoundManager.LoadFile();
     }
-
-    public void Dispose() { }
-
-    public override void PreDraw() { }
-
-    public override void Draw()
-    {
-        // i miss html/css
-
-        AddLoadAudioUI();
-
-        VolumeControlUI();
-
-        ImGui.Spacing();
-        ImGui.Spacing();
-        ImGui.Spacing();
-
-        ImGui.Spacing();
-
-        ImGui.TextColoredWrapped(headingColor, "Play sound on");
-
-        // when self falls options
-        var oofOnFall = Configuration.OofOnFall;
-        UIComponents.SectionStart(fallOptionsHeight);
-        UIComponents.SectionHeader("Fall damage (self only)", ref oofOnFall, () =>
-        {
-            Configuration.OofOnFall = oofOnFall;
-            Configuration.Save();
-        });
-        if (!oofOnFall) ImGui.BeginDisabled();
-
-        OnFallConfigUI();
-
-        if (!oofOnFall) ImGui.EndDisabled();
-
-        UIComponents.SectionEnd(ref fallOptionsHeight, oofOnFall ? ImGuiCol.PopupBg : ImGuiCol.TitleBg);
-        ImGui.Spacing();
-        // when people die options
-        UIComponents.SectionStart(deathOptionsHeight);
-
-        var oofOnDeath = Configuration.OofOnDeath;
-
-        UIComponents.SectionHeader("Death", ref oofOnDeath, () => { Configuration.OofOnDeath = oofOnDeath; Configuration.Save(); });
-        if (!oofOnDeath) ImGui.BeginDisabled();
-
-        OnDeathConfigUI();
-
-        if (!oofOnDeath) ImGui.EndDisabled();
-
-        UIComponents.SectionEnd(ref deathOptionsHeight, oofOnDeath ? ImGuiCol.PopupBg : ImGuiCol.TitleBg);
-
-        ImGui.Spacing();
-        ImGui.Spacing();
-        ImGui.Spacing();
-        /// watch video! --------
-        if (ImGuiComponents.IconButtonWithText(FontAwesomeIcon.ExternalLinkSquareAlt, "Watch on Youtube")) OofPlugin.OpenVideo();
-        var desc = "Hot Tip: You can Macro the /oofvideo command to\n for easy and streamlined access to this video.";
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip(desc);
-
-        ImGui.TextColoredWrapped(headingColor, "Learn about the history behind the Roblox Oof with Hbomberguy's Documentary");
-
-        ImGui.Spacing();
-        ImGui.TextColoredWrapped(headingColor, "Original Oof sound by Joey Kuras");
-
-        ImGui.Spacing();
+    if (ImGui.IsItemHovered())
+      ImGui.SetTooltip("Reset audio file to default (oof)");
 
 
-        fileDialogManager.Draw();
+    if (UIComponents.IconCornerButton(FontAwesomeIcon.Play, "volume:play", ImDrawFlags.RoundCornersLeft)) {
+      Plugin.SoundManager.Play(Plugin.SoundManager.CancelToken.Token);
     }
+    if (ImGui.IsItemHovered()) ImGui.SetTooltip("Play");
 
-    /// <summary>
-    /// load audio interface
-    /// </summary>
-    private void AddLoadAudioUI()
-    {
-        var WindowPos = ImGui.GetWindowPos();
-        var windowPadding = ImGui.GetStyle().WindowPadding;
-        var em = ImGui.GetFontSize();
-        var draw = ImGui.GetWindowDrawList();
+    ImGui.SameLine(0, 0);
 
-        ImGui.AlignTextToFramePadding();
+    if (UIComponents.IconCornerButton(FontAwesomeIcon.Stop, "volume:stop", ImDrawFlags.RoundCornersRight)) {
+      Plugin.SoundManager.Stop();
+    }
+    if (ImGui.IsItemHovered()) ImGui.SetTooltip("Stop");
 
-        ImGui.TextColoredWrapped(headingColor, "Sound file to play");
-        ImGuiComponents.HelpMarker(
-           "The audio that is triggered on death/fall damage");
-        ImGui.SameLine(ImGui.GetWindowWidth() - UIComponents.CalcButtonSize(em) - windowPadding.X);
-        if (ImGuiComponents.IconButton(FontAwesomeIcon.UndoAlt))
-        {
-            Configuration.DefaultSoundImportPath = string.Empty;
-            Configuration.Save();
-            Plugin.SoundManager.LoadFile();
-        }
-        if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("Reset audio file to default (oof)");
+    ImGui.SameLine();
+    var soundFileName = "Original Oof.wav";
 
-
-        if (UIComponents.IconCornerButton(FontAwesomeIcon.Play, "volume:play", ImDrawFlags.RoundCornersLeft))
-        {
-            Plugin.SoundManager.Play(Plugin.SoundManager.CancelToken.Token);
-        }
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Play");
-
-        ImGui.SameLine(0, 0);
-
-        if (UIComponents.IconCornerButton(FontAwesomeIcon.Stop, "volume:stop", ImDrawFlags.RoundCornersRight))
-        {
-            Plugin.SoundManager.Stop();
-        }
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Stop");
-
-        ImGui.SameLine();
-        var soundFileName = "Original Oof.wav";
-
-        if (Configuration.DefaultSoundImportPath.Length > 0)
-        {
-            var formatString = Path.GetFileName(Configuration.DefaultSoundImportPath);
-            if (formatString != null) soundFileName = formatString;
-
-        }
-        var browseText = "Upload Audio";
-        var buttonWidth = UIComponents.CalcButtonSize(browseText) + ImGui.GetFontSize() * 1.4f;
-        UIComponents.CustomDraggableText(soundFileName, buttonWidth);
-
-
-        ImGui.SameLine();
-        if (ImGuiComponents.IconButtonWithText(FontAwesomeIcon.FolderOpen, browseText))
-        {
-            void UpdatePath(bool success, string path)
-            {
-                if (!success || path.Length == 0) return;
-
-                Configuration.DefaultSoundImportPath = path;
-                Configuration.Save();
-                Plugin.SoundManager.LoadFile();
-            }
-
-            fileDialogManager.OpenFileDialog("Open Audio File...", "Audio{.wav,.mp3,.aac,.wma}", UpdatePath);
-        }
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("upload a custom audio file from your very own computer.");
+    if (Configuration.DefaultSoundImportPath.Length > 0) {
+      var formatString = Path.GetFileName(Configuration.DefaultSoundImportPath);
+      if (formatString != null) soundFileName = formatString;
 
     }
-    private void VolumeControlUI()
-    {
-        var oofVolume = Configuration.Volume;
-        ImGui.TextColoredWrapped(headingColor, "Volume");
-        ImGui.AlignTextToFramePadding();
-        UIComponents.ColorIcon(headingColor, FontAwesomeIcon.VolumeMute);
-        ImGui.SameLine();
-        ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - ImGui.GetFontSize() * 1.6f);
-        if (ImGui.SliderFloat("###volume", ref oofVolume, 0.0f, 1.0f))
-        {
-            Configuration.Volume = oofVolume;
-            Configuration.Save();
-        }
+    var browseText = "Upload Audio";
+    var buttonWidth = UIComponents.CalcButtonSize(browseText) + ImGui.GetFontSize() * 1.4f;
+    UIComponents.CustomDraggableText(soundFileName, buttonWidth);
 
-        ImGui.SameLine();
-        ImGui.AlignTextToFramePadding();
-        UIComponents.ColorIcon(headingColor, FontAwesomeIcon.VolumeUp);
+
+    ImGui.SameLine();
+    if (ImGuiComponents.IconButtonWithText(FontAwesomeIcon.FolderOpen, browseText)) {
+      void UpdatePath(bool success, string path) {
+        if (!success || path.Length == 0) return;
+
+        Configuration.DefaultSoundImportPath = path;
+        Configuration.Save();
+        Plugin.SoundManager.LoadFile();
+      }
+
+      fileDialogManager.OpenFileDialog("Open Audio File...", "Audio{.wav,.mp3,.aac,.wma}", UpdatePath);
     }
-    /// <summary>
-    /// on fall options
-    /// </summary>
-    private void OnFallConfigUI()
-    {
-        ImGui.Columns(2);
+    if (ImGui.IsItemHovered()) ImGui.SetTooltip("upload a custom audio file from your very own computer.");
 
-        components.Checkbox("During combat###fall:combat", Configuration.OofOnFallBattle, (value) =>
-        {
-            Configuration.OofOnFallBattle = value;
-        });
-
-        ImGui.NextColumn();
-
-        components.Checkbox("While mounted###fall:mounted", Configuration.OofOnFallMounted, (value) =>
-        {
-            Configuration.OofOnFallMounted = value;
-        });
-        ImGui.Columns(1);
+  }
+  private void VolumeControlUI() {
+    var oofVolume = Configuration.Volume;
+    ImGui.TextColoredWrapped(headingColor, "Volume");
+    ImGui.AlignTextToFramePadding();
+    UIComponents.ColorIcon(headingColor, FontAwesomeIcon.VolumeMute);
+    ImGui.SameLine();
+    ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - ImGui.GetFontSize() * 1.6f);
+    if (ImGui.SliderFloat("###volume", ref oofVolume, 0.0f, 1.0f)) {
+      Configuration.Volume = oofVolume;
+      Configuration.Save();
     }
-    /// <summary>
-    /// on death options
-    /// </summary>
-    private void OnDeathConfigUI()
-    {
-        ImGui.Columns(2);
 
-        components.Checkbox("During combat###death:combat", Configuration.OofOnDeathBattle, (value) =>
-        {
-            Configuration.OofOnDeathBattle = value;
-        });
+    ImGui.SameLine();
+    ImGui.AlignTextToFramePadding();
+    UIComponents.ColorIcon(headingColor, FontAwesomeIcon.VolumeUp);
+  }
+  /// <summary>
+  /// on fall options
+  /// </summary>
+  private void OnFallConfigUI() {
+    ImGui.Columns(2);
 
-        ImGui.NextColumn();
+    components.Checkbox("During combat###fall:combat", Configuration.OofOnFallBattle, (value) => {
+      Configuration.OofOnFallBattle = value;
+    });
 
-        components.Checkbox("You dies###death:self", Configuration.OofOnDeathSelf, (value) =>
-        {
-            Configuration.OofOnDeathSelf = value;
-        });
+    ImGui.NextColumn();
 
-        components.Checkbox("Party member dies###death:party", Configuration.OofOnDeathParty, (value) =>
-        {
-            Configuration.OofOnDeathParty = value;
-        });
+    components.Checkbox("While mounted###fall:mounted", Configuration.OofOnFallMounted, (value) => {
+      Configuration.OofOnFallMounted = value;
+    });
+    ImGui.Columns(1);
+  }
+  /// <summary>
+  /// on death options
+  /// </summary>
+  private void OnDeathConfigUI() {
+    ImGui.Columns(2);
 
-        components.Checkbox("Alliance member dies###death:alliance", Configuration.OofOnDeathAlliance, (value) =>
-        {
-            Configuration.OofOnDeathAlliance = value;
-        });
+    components.Checkbox("During combat###death:combat", Configuration.OofOnDeathBattle, (value) => {
+      Configuration.OofOnDeathBattle = value;
+    });
 
-        ImGui.Columns(1);
-        ImGui.Spacing();
-        ImGui.Spacing();
+    ImGui.NextColumn();
 
-        // distance based oof
-        ImGui.Spacing();
-        components.Checkbox("Distance Based Oof (DBO)###death:distance", Configuration.DistanceBasedOof, (value) =>
-        {
-            Configuration.DistanceBasedOof = value;
-        });
+    components.Checkbox("You dies###death:self", Configuration.OofOnDeathSelf, (value) => {
+      Configuration.OofOnDeathSelf = value;
+    });
 
-        if (!Configuration.DistanceBasedOof) ImGui.BeginDisabled();
+    components.Checkbox("Party member dies###death:party", Configuration.OofOnDeathParty, (value) => {
+      Configuration.OofOnDeathParty = value;
+    });
 
+    components.Checkbox("Alliance member dies###death:alliance", Configuration.OofOnDeathAlliance, (value) => {
+      Configuration.OofOnDeathAlliance = value;
+    });
 
-        ImGui.SameLine(ImGui.GetContentRegionAvail().X - ImGui.GetFontSize() * 2.4f);
+    ImGui.Columns(1);
+    ImGui.Spacing();
+    ImGui.Spacing();
 
-        if (UIComponents.IconCornerButton(FontAwesomeIcon.Play, "dbo:play", ImDrawFlags.RoundCornersLeft))
-        {
-            _ = Plugin.SoundManager.TestDistanceAudio(Plugin.SoundManager.CancelToken.Token);
-        }
-        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Test how distance affects sound");
+    // distance based oof
+    ImGui.Spacing();
+    components.Checkbox("Distance Based Oof (DBO)###death:distance", Configuration.DistanceBasedOof, (value) => {
+      Configuration.DistanceBasedOof = value;
+    });
 
-        ImGui.SameLine(0, 0);
-
-        if (UIComponents.IconCornerButton(FontAwesomeIcon.Stop, "dbo:stop", ImDrawFlags.RoundCornersRight))
-        {
-            Plugin.SoundManager.Stop();
-        }
-
-        ImGui.TextColoredWrapped(headingColor, "Lower volume based on how far someone dies from you, from 0 to 30 yalms");
-
-        /// graph
-        var steps = 800;
-        var distancePoints = new float[steps];
-        var volumemPoints = new float[steps];
-        var step = 30f / steps;
-        for (int i = 0; i < steps; i++)
-        {
-            distancePoints[i] = step * i;
-            volumemPoints[i] = Plugin.SoundManager.VolumeFromDist(step * i);
-
-        }
-        if (ImPlot.BeginPlot("##dbo:graph", new Vector2(-1, 80), ImPlotFlags.CanvasOnly))
-        {
-            ImPlot.PushStyleColor(ImPlotCol.FrameBg, new Vector4(0, 0, 0, 0));
-            ImPlot.PushStyleColor(ImPlotCol.AxisBgHovered, new Vector4(0, 0, 0, 0));
-            ImPlot.PushStyleColor(ImPlotCol.AxisText, ImGuiColors.DalamudGrey);
-
-            ImPlot.SetupMouseText(ImPlotLocation.North, ImPlotMouseTextFlags.None);
-            ImPlot.SetupLegend(ImPlotLocation.NorthEast, ImPlotLegendFlags.NoHighlightItem);
+    if (!Configuration.DistanceBasedOof) ImGui.BeginDisabled();
 
 
-            ImPlot.SetupAxisZoomConstraints(ImAxis.X1, 30, 30);
-            ImPlot.SetupAxisZoomConstraints(ImAxis.Y1, 1, 1);
-            ImPlot.SetupAxesLimits(0, 30, 0, 1);
-            ImPlot.SetupAxes("", "", ImPlotAxisFlags.None, ImPlotAxisFlags.NoTickLabels);
-            ImPlot.PopStyleColor();
-            ImPlot.SetupFinish();
+    ImGui.SameLine(ImGui.GetContentRegionAvail().X - ImGui.GetFontSize() * 2.4f);
 
-            ImPlot.PlotLine("volume", ref distancePoints[0], ref volumemPoints[0], steps);
-
-            ImPlot.EndPlot();
-        }
-        ImGui.Columns(2);
-
-        ImGui.TextColoredWrapped(headingColor, "Falloff Intensity");
-        ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
-        var distanceFalloff = Configuration.DistanceFalloff;
-        if (ImGui.SliderFloat("###death:distance:falloff", ref distanceFalloff, 0.0f, 1.0f))
-        {
-            Configuration.DistanceFalloff = distanceFalloff;
-            Configuration.Save();
-        }
-
-        ImGui.NextColumn();
-        ImGui.TextColoredWrapped(headingColor, "Minimum Volume");
-        var distanceMinVolume = Configuration.DistanceMinVolume;
-        ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - ImGui.GetStyle().WindowPadding.X);
-        if (ImGui.SliderFloat("###death:distance:volume", ref distanceMinVolume, 0.0f, 1.0f))
-        {
-            Configuration.DistanceMinVolume = distanceMinVolume;
-            Configuration.Save();
-        }
-        if (!Configuration.DistanceBasedOof) ImGui.EndDisabled();
-        ImGui.Columns(1);
+    if (UIComponents.IconCornerButton(FontAwesomeIcon.Play, "dbo:play", ImDrawFlags.RoundCornersLeft)) {
+      _ = Plugin.SoundManager.TestDistanceAudio(Plugin.SoundManager.CancelToken.Token);
     }
-    // Set up the file selector with the right flags and custom side bar items.
-    public static FileDialogManager SetupFileManager()
-    {
-        var fileManager = new FileDialogManager
-        {
-            AddedWindowFlags = ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoDocking,
-        };
+    if (ImGui.IsItemHovered()) ImGui.SetTooltip("Test how distance affects sound");
 
-        // Remove Videos and Music.
-        fileManager.CustomSideBarItems.Add(("Videos", string.Empty, 0, -1));
-        fileManager.CustomSideBarItems.Add(("Music", string.Empty, 0, -1));
+    ImGui.SameLine(0, 0);
 
-        return fileManager;
+    if (UIComponents.IconCornerButton(FontAwesomeIcon.Stop, "dbo:stop", ImDrawFlags.RoundCornersRight)) {
+      Plugin.SoundManager.Stop();
     }
+
+    ImGui.TextColoredWrapped(headingColor, "Lower volume based on how far someone dies from you, from 0 to 30 yalms");
+
+    /// graph
+    var steps = 800;
+    var distancePoints = new float[steps];
+    var volumemPoints = new float[steps];
+    var step = 30f / steps;
+    for (int i = 0; i < steps; i++) {
+      distancePoints[i] = step * i;
+      volumemPoints[i] = Plugin.SoundManager.VolumeFromDist(step * i);
+
+    }
+    if (ImPlot.BeginPlot("##dbo:graph", new Vector2(-1, 80), ImPlotFlags.CanvasOnly)) {
+      ImPlot.PushStyleColor(ImPlotCol.FrameBg, new Vector4(0, 0, 0, 0));
+      ImPlot.PushStyleColor(ImPlotCol.AxisBgHovered, new Vector4(0, 0, 0, 0));
+      ImPlot.PushStyleColor(ImPlotCol.AxisText, ImGuiColors.DalamudGrey);
+
+      ImPlot.SetupMouseText(ImPlotLocation.North, ImPlotMouseTextFlags.None);
+      ImPlot.SetupLegend(ImPlotLocation.NorthEast, ImPlotLegendFlags.NoHighlightItem);
+
+
+      ImPlot.SetupAxisZoomConstraints(ImAxis.X1, 30, 30);
+      ImPlot.SetupAxisZoomConstraints(ImAxis.Y1, 1, 1);
+      ImPlot.SetupAxesLimits(0, 30, 0, 1);
+      ImPlot.SetupAxes("", "", ImPlotAxisFlags.None, ImPlotAxisFlags.NoTickLabels);
+      ImPlot.PopStyleColor();
+      ImPlot.SetupFinish();
+
+      ImPlot.PlotLine("volume", ref distancePoints[0], ref volumemPoints[0], steps);
+
+      ImPlot.EndPlot();
+    }
+    ImGui.Columns(2);
+
+    ImGui.TextColoredWrapped(headingColor, "Falloff Intensity");
+    ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
+    var distanceFalloff = Configuration.DistanceFalloff;
+    if (ImGui.SliderFloat("###death:distance:falloff", ref distanceFalloff, 0.0f, 1.0f)) {
+      Configuration.DistanceFalloff = distanceFalloff;
+      Configuration.Save();
+    }
+
+    ImGui.NextColumn();
+    ImGui.TextColoredWrapped(headingColor, "Minimum Volume");
+    var distanceMinVolume = Configuration.DistanceMinVolume;
+    ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - ImGui.GetStyle().WindowPadding.X);
+    if (ImGui.SliderFloat("###death:distance:volume", ref distanceMinVolume, 0.0f, 1.0f)) {
+      Configuration.DistanceMinVolume = distanceMinVolume;
+      Configuration.Save();
+    }
+    if (!Configuration.DistanceBasedOof) ImGui.EndDisabled();
+    ImGui.Columns(1);
+  }
+  // Set up the file selector with the right flags and custom side bar items.
+  public static FileDialogManager SetupFileManager() {
+    var fileManager = new FileDialogManager {
+      AddedWindowFlags = ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoDocking,
+    };
+
+    // Remove Videos and Music.
+    fileManager.CustomSideBarItems.Add(("Videos", string.Empty, 0, -1));
+    fileManager.CustomSideBarItems.Add(("Music", string.Empty, 0, -1));
+
+    return fileManager;
+  }
 
 
 }
