@@ -62,7 +62,7 @@ internal class SoundManager : IDisposable {
       var audioStream =
           new WaveChannel32(reader) {
             Volume = Configuration.Volume * volume,
-            PadWithZeroes = false
+            PadWithZeroes = false // you need this or else playbackstopped event will not fire
           };
 
       using (reader) {

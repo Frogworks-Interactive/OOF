@@ -21,7 +21,8 @@ namespace OofPlugin {
 
       if (currentHp == 0 && !DeadPlayers.Any(x => x.PlayerId == entityId)) {
         DeadPlayers.Add(new DeadPlayer { PlayerId = entityId, Distance = pos });
-      } else if (currentHp != 0 &&
+      }
+      else if (currentHp != 0 &&
                  DeadPlayers.Any(x => x.PlayerId == entityId)) {
         DeadPlayers.RemoveAll(x => x.PlayerId == entityId);
       }
