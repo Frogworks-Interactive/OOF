@@ -14,10 +14,8 @@ namespace OofPlugin {
 
     public List<DeadPlayer> DeadPlayers { get; set; } = new();
 
-    private void AddRemoveDeadPlayer(uint currentHp, uint entityId, Vector3 pos,
-                                     bool condition = true) {
-      if (!condition)
-        return;
+    private void AddRemoveDeadPlayer(uint currentHp, uint entityId, Vector3 pos) {
+  
 
       if (currentHp == 0 && !DeadPlayers.Any(x => x.PlayerId == entityId)) {
         DeadPlayers.Add(new DeadPlayer { PlayerId = entityId, Distance = pos });
@@ -32,15 +30,14 @@ namespace OofPlugin {
       if (character == null)
         return;
       AddRemoveDeadPlayer(character.CurrentHp, character.EntityId,
-                          character.Position, true);
+                          character.Position);
     }
 
-    public void AddRemoveDeadPlayer(IPartyMember character,
-                                    bool condition = true) {
+    public void AddRemoveDeadPlayer(IPartyMember character) {
       if (character == null)
         return;
       AddRemoveDeadPlayer(character.CurrentHP, character.EntityId,
-                          character.Position, condition);
+                          character.Position);
     }
   }
 }
