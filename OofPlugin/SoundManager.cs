@@ -4,10 +4,6 @@ using System.IO;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
-using Dalamud.IoC;
-using Dalamud.Plugin.Services;
-using Dalamud.Game.ClientState.Objects;
-using Dalamud.Game.ClientState.Objects.SubKinds;
 
 namespace OofPlugin;
 
@@ -56,15 +52,18 @@ internal class SoundManager : IDisposable {
       WaveStream reader;
       try {
         reader = new MediaFoundationReader(soundFile);
-      } catch (Exception ex) {
+      }
+      catch (Exception ex) {
         isSoundPlaying = false;
         Dalamud.Log.Error("Failed to read sound file", ex);
         return;
       }
 
       var audioStream =
-          new WaveChannel32(reader) { Volume = Configuration.Volume * volume,
-                                      PadWithZeroes = false };
+          new WaveChannel32(reader) {
+            Volume = Configuration.Volume * volume,
+            PadWithZeroes = false
+          };
 
       using (reader) {
         soundOut?.Dispose();
@@ -75,7 +74,8 @@ internal class SoundManager : IDisposable {
           soundOut.Play();
 
           soundOut.PlaybackStopped += (_, _) => { isSoundPlaying = false; };
-        } catch (Exception ex) {
+        }
+        catch (Exception ex) {
           isSoundPlaying = false;
           Dalamud.Log.Error("Failed to play sound", ex);
         }
@@ -94,7 +94,7 @@ internal class SoundManager : IDisposable {
         // Run on framework thread AND await it so exceptions are observed
         await Dalamud.Framework.RunOnFrameworkThread(() => {
           var localPlayer =
-              OofPlugin.ObjectTable.LocalPlayer as IPlayerCharacter;
+              Dalamud.ObjectTable.LocalPlayer;
           if (localPlayer is null)
             return;
 
@@ -116,10 +116,12 @@ internal class SoundManager : IDisposable {
             break;
           }
         });
-      } catch (OperationCanceledException) {
+      }
+      catch (OperationCanceledException) {
         // normal shutdown
         break;
-      } catch (Exception ex) {
+      }
+      catch (Exception ex) {
         Dalamud.Log.Error(ex, "OOF: OofAudioPolling crashed");
         // keep loop alive instead of dying forever
       }

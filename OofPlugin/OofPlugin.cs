@@ -1,4 +1,5 @@
 using Dalamud.Game.ClientState.Conditions;
+using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.Command;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
@@ -6,9 +7,6 @@ using Dalamud.Plugin.Services;
 using Dalamud.Utility;
 using OofPlugin.Windows;
 using System;
-using Dalamud.IoC;
-using Dalamud.Game.ClientState.Objects;
-using Dalamud.Game.ClientState.Objects.SubKinds;
 using System.Linq;
 
 // shoutout anna clemens
@@ -21,9 +19,6 @@ public sealed class OofPlugin : IDalamudPlugin {
   private const string oofCommand = "/oof";
   private const string oofSettings = "/oofsettings";
   private const string oofVideo = "/oofvideo";
-
-  [PluginService]
-  internal static IObjectTable ObjectTable { get; private set; } = null!;
 
   public readonly WindowSystem WindowSystem = new("OofPlugin");
   public Configuration Configuration { get; init; }
@@ -70,16 +65,22 @@ public sealed class OofPlugin : IDalamudPlugin {
   private void DrawUI() => WindowSystem.Draw();
   public void ToggleConfigUI() => ConfigWindow.Toggle();
   private void OnCommand(string command, string args) {
-    if (command == oofCommand)
-      SoundManager.Play(SoundManager.CancelToken.Token);
-    if (command == oofSettings)
-      ToggleConfigUI();
-    if (command == oofVideo)
-      OpenVideo();
+    switch (command) {
+      case oofCommand:
+        SoundManager.Play(SoundManager.CancelToken.Token);
+        break;
+      case oofSettings:
+        ToggleConfigUI();
+        break;
+      case oofVideo:
+        OpenVideo();
+        break;
+
+    }
   }
 
   private void FrameworkOnUpdate(IFramework framework) {
-    var localPlayer = ObjectTable.LocalPlayer as IPlayerCharacter;
+    IPlayerCharacter? localPlayer = Dalamud.ObjectTable.LocalPlayer;
     if (localPlayer is null)
       return;
 
@@ -97,7 +98,8 @@ public sealed class OofPlugin : IDalamudPlugin {
         CheckFallen(localPlayer);
       if (Configuration.OofOnDeath)
         CheckDeath(localPlayer);
-    } catch (Exception e) {
+    }
+    catch (Exception e) {
       Dalamud.Log.Error($"failed to check for oof condition: {e}");
     }
   }
@@ -106,7 +108,6 @@ public sealed class OofPlugin : IDalamudPlugin {
   /// check if player has died during alliance, party, and self.
   /// this may be the worst if statement chain i have made
   /// </summary>
-
   private void CheckDeath(IPlayerCharacter localPlayer) {
     if (!Configuration.OofOnDeathBattle &&
         Dalamud.Condition[ConditionFlag.InCombat])
@@ -133,7 +134,8 @@ public sealed class OofPlugin : IDalamudPlugin {
 
             DeadPlayersList.AddRemoveDeadPlayer(allianceMember);
           }
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
           Dalamud.Log.Error("failed alliance check", e.Message);
         }
       }
@@ -141,9 +143,8 @@ public sealed class OofPlugin : IDalamudPlugin {
       // Party members (including yourself if PartyList contains you)
       if (Configuration.OofOnDeathParty) {
         foreach (var member in Dalamud.PartyList) {
-          DeadPlayersList.AddRemoveDeadPlayer(
-              member,
-              member.Territory.RowId == Dalamud.ClientState.TerritoryType);
+          if (member.Territory.RowId != Dalamud.ClientState.TerritoryType) return;
+          DeadPlayersList.AddRemoveDeadPlayer(member);
         }
       }
     }
@@ -168,13 +169,12 @@ public sealed class OofPlugin : IDalamudPlugin {
     if (isJumping && !wasJumping) {
       if (prevVel < 0.17)
         distJump = pos;                   // started falling
-    } else if (wasJumping && !isJumping)  // stopped falling
+    }
+    else if (wasJumping && !isJumping)  // stopped falling
     {
       if (distJump - pos > 9.60)
-        SoundManager.Play(
-            SoundManager.CancelToken
-                .Token);  // fell enough to take damage // i guessed and checked
-                          // this distance value btw
+        SoundManager.Play(SoundManager.CancelToken.Token);  // fell enough to take damage 
+                                                            // i guessed and checked this distance value btw
     }
 
     // set position for next timestep
