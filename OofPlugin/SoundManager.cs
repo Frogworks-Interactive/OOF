@@ -46,7 +46,7 @@ internal class SoundManager : IDisposable {
   }
 
   public void Play(CancellationToken token, float volume = 1f) {
-    Task.Run(() => {
+    _ = Task.Run(() => {
       isSoundPlaying = true;
 
       WaveStream reader;
@@ -66,6 +66,7 @@ internal class SoundManager : IDisposable {
           };
 
       using (reader) {
+        soundOut?.Pause();
         soundOut?.Dispose();
         soundOut = new DirectSoundOut();
 
@@ -80,7 +81,13 @@ internal class SoundManager : IDisposable {
           Dalamud.Log.Error("Failed to play sound", ex);
         }
       }
-    }, token);
+    }, token).ContinueWith((t) => {
+      t.Exception?.Handle((e) => {
+        Dalamud.Log.Error($"Failed to dispose DirectSoundOut {e} ");
+
+        return true;
+      });
+    });
   }
 
   private async Task OofAudioPolling(CancellationToken token) {
