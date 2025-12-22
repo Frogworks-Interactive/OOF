@@ -24,5 +24,7 @@ Dalamud plugin that plays the oof sound when you take
 now in the dalamud repository! 
 
 thank you to  [larsmonman](https://github.com/larsmonman) for updating to API9
+
 thank you to [susy-bakaa](https://github.com/susy-bakaa) for updateing to API12
 
+thank you to [HeyImKiri](https://github.com/HeyImKiri) for updating to API14
