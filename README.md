@@ -1,3 +1,5 @@
+>#### NOTE: theres an outstanding issue with handling audio on linux where using this plugin immediately crashes the game. See https://github.com/Frogworks-Interactive/OOF/issues/13
+
 ![oof plugin logo](/Data/logo.png)
 # OOF!
 
