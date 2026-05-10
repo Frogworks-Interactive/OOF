@@ -59,6 +59,21 @@ public class ConfigWindow : Window, IDisposable {
 
     ImGui.Spacing();
 
+    ImGui.TextColoredWrapped(headingColor, "Settings");
+    var audioOverlap = Configuration.AudioOverlap;
+    if (ImGui.Checkbox("Allow audio overlap###config:overlap", ref audioOverlap)) {
+      Configuration.AudioOverlap = audioOverlap;
+      Configuration.Save();
+    };
+    ImGuiComponents.HelpMarker("Overlap audio instead of stopping an already playing audio");
+
+    ImGui.Spacing();
+    if (ImGui.Button("Reload Audio Devices")) {
+      Plugin.SoundManager.InitializeAudioDevice(); 
+    }
+    
+    
+    ImGui.Spacing();
     ImGui.TextColoredWrapped(headingColor, "Play sound on");
 
     // when self falls options
@@ -321,7 +336,5 @@ public class ConfigWindow : Window, IDisposable {
 
     return fileManager;
   }
-
-
 }
 

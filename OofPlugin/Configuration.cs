@@ -26,6 +26,7 @@ namespace OofPlugin {
     //audio settings
     public float Volume { get; set; } = 0.5f;
     public string DefaultSoundImportPath { get; set; } = string.Empty;
+    public bool AudioOverlap { get; set; } = false;
 
     // the below exist just to make saving less cumbersome
 
