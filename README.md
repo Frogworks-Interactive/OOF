@@ -1,5 +1,3 @@
-#### NOTE: theres an outstanding issue with handling audio on linux where using this plugin immediately crashes the game. See https://github.com/Frogworks-Interactive/OOF/issues/13
-
 ![oof plugin logo](/Data/logo.png)
 # OOF!
 
@@ -35,4 +33,4 @@ thank you to [HeyImKiri](https://github.com/HeyImKiri) for updating to API14
 
 thank you to [DaBultz](https://github.com/DaBultz) for updating to API15
 
-thank you to [DaBultz](https://github.com/DaBultz) for linux cross-compatability
+thank you to [DaBultz](https://github.com/DaBultz) for linux cross-compatibility
