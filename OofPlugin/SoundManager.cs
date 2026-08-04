@@ -132,8 +132,8 @@ internal class SoundManager : IDisposable {
         playbackDevice?.MasterMixer.RemoveComponent(player);
         player.Dispose();
       };
-      
-      player.Volume = volume;
+     
+      player.Volume = volume * Configuration.Volume;
       player.Play();
     }, token);
   }
@@ -192,24 +192,25 @@ internal class SoundManager : IDisposable {
   }
 
   public async Task TestDistanceAudio(CancellationToken token) {
-    async Task PlayTest(float volume) {
-      if (token.IsCancellationRequested)
-        return;
+    // return and exit immediately if cancelled
+    async Task<bool> PlayTest(float volume) {
+      if (token.IsCancellationRequested )
+        return true;
 
       Play(token, volume);
       await Task.Delay(700, token);
+      return false;
     }
 
-    await PlayTest(VolumeFromDist(0));
-    await PlayTest(VolumeFromDist(10));
-    await PlayTest(VolumeFromDist(20));
-    await PlayTest(VolumeFromDist(30));
+    if (await PlayTest(VolumeFromDist(0))) return;
+    if (await PlayTest(VolumeFromDist(10))) return;
+    if (await PlayTest(VolumeFromDist(20))) return;
+    if (await PlayTest(VolumeFromDist(30))) return;
   }
 
   public void Dispose() {
     CancelToken.Cancel();
     CancelToken.Dispose();
-    
     playbackDevice?.Dispose();
     engine.Dispose();
   }

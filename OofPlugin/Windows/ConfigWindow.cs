@@ -51,29 +51,26 @@ public class ConfigWindow : Window, IDisposable {
 
     AddLoadAudioUI();
 
+    ImGui.Spacing();
+    ImGui.AlignTextToFramePadding();
+    ImGui.TextColoredWrapped(headingColor, "Cant hear any sound?");
+    var reloadBtn = "Reload Audio Devices";
+    ImGui.SameLine(ImGui.GetContentRegionAvail().X - UIComponents.CalcButtonSize(ImGui.CalcTextSize(reloadBtn).X - ImGui.GetStyle().WindowPadding.X));
+    if (ImGui.Button(reloadBtn)) {
+      Plugin.SoundManager.InitializeAudioDevice();
+    }
+    if (ImGui.IsItemHovered()) ImGui.SetTooltip("Click this if you added or removed an audio device. \n OOF uses whatever is set as default.");
+
+    ImGui.Spacing();
+    ImGui.Spacing();
+    ImGui.Spacing();
+
     VolumeControlUI();
 
     ImGui.Spacing();
     ImGui.Spacing();
     ImGui.Spacing();
 
-    ImGui.Spacing();
-
-    ImGui.TextColoredWrapped(headingColor, "Settings");
-    var audioOverlap = Configuration.AudioOverlap;
-    if (ImGui.Checkbox("Allow audio overlap###config:overlap", ref audioOverlap)) {
-      Configuration.AudioOverlap = audioOverlap;
-      Configuration.Save();
-    };
-    ImGuiComponents.HelpMarker("Overlap audio instead of stopping an already playing audio");
-
-    ImGui.Spacing();
-    if (ImGui.Button("Reload Audio Devices")) {
-      Plugin.SoundManager.InitializeAudioDevice(); 
-    }
-    
-    
-    ImGui.Spacing();
     ImGui.TextColoredWrapped(headingColor, "Play sound on");
 
     // when self falls options
@@ -190,12 +187,14 @@ public class ConfigWindow : Window, IDisposable {
   }
   private void VolumeControlUI() {
     var oofVolume = Configuration.Volume;
+
     ImGui.TextColoredWrapped(headingColor, "Volume");
+
     ImGui.AlignTextToFramePadding();
     UIComponents.ColorIcon(headingColor, FontAwesomeIcon.VolumeMute);
     ImGui.SameLine();
     ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - ImGui.GetFontSize() * 1.6f);
-    if (ImGui.SliderFloat("###volume", ref oofVolume, 0.0f, 1.0f)) {
+    if (ImGui.SliderFloat("###volume", ref oofVolume, 0.0f, 2.0f)) {
       Configuration.Volume = oofVolume;
       Configuration.Save();
     }
@@ -203,6 +202,16 @@ public class ConfigWindow : Window, IDisposable {
     ImGui.SameLine();
     ImGui.AlignTextToFramePadding();
     UIComponents.ColorIcon(headingColor, FontAwesomeIcon.VolumeUp);
+
+    ImGui.Spacing();
+
+    var audioOverlap = Configuration.AudioOverlap;
+    if (ImGui.Checkbox("Allow audio overlap###config:overlap", ref audioOverlap)) {
+      Configuration.AudioOverlap = audioOverlap;
+      Configuration.Save();
+    }
+    
+    ImGuiComponents.HelpMarker("Audio overlaps instead of clipping the previous sound");
   }
   /// <summary>
   /// on fall options
@@ -258,7 +267,7 @@ public class ConfigWindow : Window, IDisposable {
     if (!Configuration.DistanceBasedOof) ImGui.BeginDisabled();
 
 
-    ImGui.SameLine(ImGui.GetContentRegionAvail().X - ImGui.GetFontSize() * 2.4f);
+    ImGui.SameLine(ImGui.GetContentRegionAvail().X - UIComponents.CalcButtonSize(ImGui.GetFontSize() * 2) - ImGui.GetStyle().WindowPadding.X);
 
     if (UIComponents.IconCornerButton(FontAwesomeIcon.Play, "dbo:play", ImDrawFlags.RoundCornersLeft)) {
       _ = Plugin.SoundManager.TestDistanceAudio(Plugin.SoundManager.CancelToken.Token);
