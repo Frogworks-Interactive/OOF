@@ -124,7 +124,7 @@ internal class SoundManager : IDisposable {
       lock(activePlayers) { activePlayers.Add(player); }
       
       playbackDevice?.MasterMixer.AddComponent(player);
-      
+     
       // this cleans up after the playback ends
       player.PlaybackEnded += (_, _) => {
         lock(activePlayers) { activePlayers.Remove(player); }
