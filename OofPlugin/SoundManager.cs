@@ -1,7 +1,9 @@
+using Lumina.Data.Parsing.Scd;
 using SoundFlow.Abstracts.Devices;
 using SoundFlow.Backends.MiniAudio;
 using SoundFlow.Components;
 using SoundFlow.Providers;
+using SoundFlow.Structs;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -9,24 +11,28 @@ using System.Linq;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
+using static FFXIVClientStructs.FFXIV.Component.GUI.AtkTimer.Delegates;
 using AudioFormat = SoundFlow.Structs.AudioFormat;
 
 namespace OofPlugin;
 
 internal class SoundManager : IDisposable {
+
   private readonly Configuration Configuration;
   private readonly DeadPlayersList DeadPlayersList;
 
-  // sound
   private string? soundFile;
 
-  private readonly MiniAudioEngine engine;
-  private AudioPlaybackDevice? playbackDevice;
-  private AudioFormat audioFormat;
   private readonly List<SoundPlayer> activePlayers = new();
 
   private bool isInitialized = false;
-  
+
+  // sound engine stuff
+  private readonly MiniAudioEngine engine;
+  private AudioPlaybackDevice? playbackDevice;
+  private readonly AudioFormat audioFormat = AudioFormat.DvdHq;
+  private nint activeDeviceId = 0;
+
   internal CancellationTokenSource CancelToken;
 
   public SoundManager(OofPlugin plugin) {
@@ -34,10 +40,10 @@ internal class SoundManager : IDisposable {
     DeadPlayersList = plugin.DeadPlayersList;
 
     LoadFile();
-    
+
     engine = new MiniAudioEngine();
     InitializeAudioDevice();
-    
+
     CancelToken = new CancellationTokenSource();
     Task.Run(() => OofAudioPolling(CancelToken.Token));
   }
@@ -56,20 +62,18 @@ internal class SoundManager : IDisposable {
   /// created it will be destroyed and re-created, safely
   /// Falls back to logging an error if device discovery or initialization fails.
   /// </summary>
-  public void InitializeAudioDevice() {
+  public void InitializeAudioDevice(DeviceInfo? newDevice = null) {
     DestroyAudioDevice();
 
     try {
-      engine.UpdateAudioDevicesInfo();
+      var defaultDevice = newDevice ?? FetchDefaultAudioDevice();
 
-      // Get the system default playback device 
-      var defaultDevice = engine.PlaybackDevices.FirstOrDefault(x => x.IsDefault);
-
-      audioFormat = AudioFormat.DvdHq;
       playbackDevice = engine.InitializePlaybackDevice(defaultDevice, audioFormat);
       playbackDevice.Start();
 
       isInitialized = true;
+      activeDeviceId = defaultDevice.Id;
+
     }
     catch (Exception ex) {
       isInitialized = false;
@@ -77,15 +81,30 @@ internal class SoundManager : IDisposable {
     }
   }
 
+  /// <summary>
+  /// Checks to see if the default device has changed, and re-initialize if so. It triggers at the start of a Play()
+  /// </summary>
+  private void AutoUpdateDevicesAndReload() {
+    var device = FetchDefaultAudioDevice();
+
+    if (device.Id == activeDeviceId) return;
+
+    InitializeAudioDevice(device);
+  }
+
+  private DeviceInfo FetchDefaultAudioDevice() {
+    engine.UpdateAudioDevicesInfo();
+    return engine.PlaybackDevices.FirstOrDefault(x => x.IsDefault);
+  }
 
   private void DestroyAudioDevice() {
     Stop();
-    
-    if(playbackDevice != null) {
+
+    if (playbackDevice != null) {
       playbackDevice.Stop();
       playbackDevice.Dispose();
     }
-    
+
   }
 
   /// <summary>
@@ -93,7 +112,7 @@ internal class SoundManager : IDisposable {
   /// </summary>
   public void Stop() {
     if (!isInitialized) return;
-    
+
     lock (activePlayers) {
       activePlayers.ForEach(x => {
         x.Stop();
@@ -107,32 +126,35 @@ internal class SoundManager : IDisposable {
 
   public void Play(CancellationToken token, float volume = 1f) {
     if (!isInitialized) return;
-    
+
+
     _ = Task.Run(() => {
       if (!Configuration.AudioOverlap) {
-        Stop(); 
+        Stop();
       }
+
+      AutoUpdateDevicesAndReload();
 
       if (soundFile == null) {
         Dalamud.Log.Error("OOF: No sound file found to play.");
         return;
       }
-      
+
       var dataProvider = new StreamDataProvider(engine, audioFormat, File.OpenRead(soundFile));
       var player = new SoundPlayer(engine, audioFormat, dataProvider);
-      
-      lock(activePlayers) { activePlayers.Add(player); }
-      
+
+      lock (activePlayers) { activePlayers.Add(player); }
+
       playbackDevice?.MasterMixer.AddComponent(player);
-     
+
       // this cleans up after the playback ends
       player.PlaybackEnded += (_, _) => {
-        lock(activePlayers) { activePlayers.Remove(player); }
+        lock (activePlayers) { activePlayers.Remove(player); }
         player.Stop();
         playbackDevice?.MasterMixer.RemoveComponent(player);
         player.Dispose();
       };
-     
+
       player.Volume = volume * Configuration.Volume;
       player.Play();
     }, token);
@@ -194,7 +216,7 @@ internal class SoundManager : IDisposable {
   public async Task TestDistanceAudio(CancellationToken token) {
     // return and exit immediately if cancelled
     async Task<bool> PlayTest(float volume) {
-      if (token.IsCancellationRequested )
+      if (token.IsCancellationRequested)
         return true;
 
       Play(token, volume);
