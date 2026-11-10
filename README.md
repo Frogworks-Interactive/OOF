@@ -20,10 +20,14 @@ Dalamud plugin that plays the oof sound when you take
 /oofsettings
 ```
 
-## install
+### install
 now in the dalamud repository! 
 
-## CONTRIBUTOR HALL OF FAME
+### dev
+We're using [Soundflow](https://github.com/LSXPrime/SoundFlow) library to play audio for cross-platform compatibility (see: [issue #13](https://github.com/Frogworks-Interactive/OOF/issues/13)). it has a bunch of ergonomic features but we're mostly just using the miniaudio c# bindings. 
+
+
+### CONTRIBUTOR HALL OF FAME
 
 thank you to  [larsmonman](https://github.com/larsmonman) for updating to API9
 
